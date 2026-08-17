@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { NavTab, Player, Match, MatchPlayerRating } from './types';
+import { toPlayer } from './api';
+import { useAuth } from './auth/AuthContext';
 import { PLAYERS, MATCHES } from './data/mockData';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
@@ -11,14 +13,17 @@ import { PlayersDirectoryView } from './components/PlayersDirectoryView';
 import { RateTeammatesModal } from './components/RateTeammatesModal';
 import { EditMatchModal } from './components/EditMatchModal';
 import { NotificationsModal } from './components/NotificationsModal';
+import { LoginScreen } from './components/LoginScreen';
 
 export default function App() {
+  const { isAuthenticated, player, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('rankings');
   const [players, setPlayers] = useState<Player[]>(PLAYERS);
   const [matches, setMatches] = useState<Match[]>(MATCHES);
-  
-  const [currentUserId] = useState<string>('p-diego');
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>('p-diego');
+
+  const sessionPlayer = player ? toPlayer(player) : null;
+  const currentUserId = player ? String(player.id) : '';
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(currentUserId || '');
   const [selectedMatchId, setSelectedMatchId] = useState<string>('match-13-featured');
   const [isViewingSpecificMatch, setIsViewingSpecificMatch] = useState<boolean>(false);
 
@@ -27,9 +32,13 @@ export default function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
 
-  const currentUser = players.find((p) => p.id === currentUserId) || players[0];
+  const currentUser: Player = sessionPlayer ?? players.find((p) => p.id === currentUserId) ?? players[0];
   const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || currentUser;
   const currentMatch = matches.find((m) => m.id === selectedMatchId) || matches[0];
+
+  if (!isAuthenticated) {
+    return <LoginScreen />;
+  }
 
   const handleSelectPlayer = (playerId: string) => {
     setSelectedPlayerId(playerId);
@@ -56,6 +65,10 @@ export default function App() {
       setIsViewingSpecificMatch(false);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleLogout = () => {
+    logout();
   };
 
   // Callback to update official ratings
@@ -109,6 +122,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={handleTabChange}
         currentUser={currentUser}
+        onLogout={handleLogout}
         onOpenNotifications={() => setIsNotificationsModalOpen(true)}
       />
 
@@ -153,6 +167,7 @@ export default function App() {
                 <MatchDetailView
                   match={currentMatch}
                   allMatches={matches}
+                  isAdmin={isAdmin}
                   onSelectMatch={setSelectedMatchId}
                   onSelectPlayer={handleSelectPlayer}
                   onOpenEditModal={() => setIsEditModalOpen(true)}

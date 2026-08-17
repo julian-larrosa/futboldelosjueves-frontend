@@ -5,6 +5,7 @@ interface NavigationProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
   currentUser: Player;
+  onLogout: () => void;
   onOpenNotifications: () => void;
 }
 
@@ -12,6 +13,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   setActiveTab,
   currentUser,
+  onLogout,
   onOpenNotifications,
 }) => {
   return (
@@ -91,7 +93,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           >
             <div className="w-11 h-11 rounded-full overflow-hidden border border-[#DCD6C8] shrink-0 bg-[#D2B48C]">
               <img
-                src={currentUser.avatar || currentUser.photoHero}
+                src={currentUser.avatar || currentUser.photoHero || ''}
                 alt={currentUser.name}
                 className="w-full h-full object-cover"
                 referrerPolicy="no-referrer"
@@ -118,6 +120,14 @@ export const Navigation: React.FC<NavigationProps> = ({
             <p className="font-serif font-bold text-[#5A5A40]">Jueves 20:30 hrs</p>
             <p className="text-[#8D8D7E] text-[11px]">Cancha 2 • Cancha sintética</p>
           </div>
+
+          <button
+            onClick={onLogout}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-mono font-bold text-[#8D8D7E] hover:text-[#C2623F] hover:bg-[#FFEBE5] border border-transparent hover:border-[#D97B66]/30 transition-all"
+          >
+            <span className="material-symbols-outlined text-[18px]">logout</span>
+            <span>Cerrar sesión</span>
+          </button>
         </div>
       </aside>
 
@@ -129,7 +139,7 @@ export const Navigation: React.FC<NavigationProps> = ({
           className="w-9 h-9 rounded-full overflow-hidden border border-[#EBE7DF] bg-[#D2B48C]"
         >
           <img
-            src={currentUser.avatar || currentUser.photoHero}
+            src={currentUser.avatar || currentUser.photoHero || ''}
             alt={currentUser.name}
             className="w-full h-full object-cover"
             referrerPolicy="no-referrer"
@@ -147,6 +157,15 @@ export const Navigation: React.FC<NavigationProps> = ({
           <span className="font-serif italic font-bold text-xl text-[#5A5A40] tracking-tight">
             FDLJ
           </span>
+        </button>
+
+        {/* Trailing Logout */}
+        <button
+          onClick={onLogout}
+          aria-label="Cerrar sesión"
+          className="text-[#5A5A40] hover:text-[#C2623F] transition-colors p-1.5 rounded-full hover:bg-[#FFEBE5]"
+        >
+          <span className="material-symbols-outlined text-[22px]">logout</span>
         </button>
 
         {/* Trailing Icon Notifications */}

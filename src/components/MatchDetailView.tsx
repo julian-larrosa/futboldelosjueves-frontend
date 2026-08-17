@@ -4,6 +4,7 @@ import { Match, Player } from '../types';
 interface MatchDetailViewProps {
   match: Match;
   allMatches: Match[];
+  isAdmin: boolean;
   onSelectMatch: (matchId: string) => void;
   onSelectPlayer: (playerId: string) => void;
   onOpenEditModal: () => void;
@@ -13,6 +14,7 @@ interface MatchDetailViewProps {
 export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   match,
   allMatches,
+  isAdmin,
   onSelectMatch,
   onSelectPlayer,
   onOpenEditModal,
@@ -75,14 +77,16 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
           </div>
         </div>
 
-        {/* Action Button: Editar Resultado / Stats */}
-        <button
-          onClick={onOpenEditModal}
-          className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
-        >
-          <span className="material-symbols-outlined text-[18px] text-[#7B8B6F]">edit</span>
-          <span>Editar Resultado/Stats</span>
-        </button>
+        {/* Action Button: Editar Resultado / Stats (solo admin) */}
+        {isAdmin && (
+          <button
+            onClick={onOpenEditModal}
+            className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[18px] text-[#7B8B6F]">edit</span>
+            <span>Editar Resultado/Stats</span>
+          </button>
+        )}
       </div>
 
       {/* MATCH SCOREBOARD CARD */}
