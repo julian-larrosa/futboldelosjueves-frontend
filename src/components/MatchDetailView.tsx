@@ -1,9 +1,19 @@
 import React, { useState } from 'react';
-import { Match, Player } from '../types';
+import {
+  MatchStatus,
+  matchesApi,
+  participationsApi,
+  ratingsApi,
+  statisticsApi,
+  teamsApi,
+  TeamSide,
+} from '../api';
+import { useApi } from '../hooks/useApi';
+import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { formatMatchDate, formatMatchTime, formatShortDate, getInitials } from '../utils/format';
 
 interface MatchDetailViewProps {
-  match: Match;
-  allMatches: Match[];
+  matchId: number;
   isAdmin: boolean;
   onSelectMatch: (matchId: string) => void;
   onSelectPlayer: (playerId: string) => void;
@@ -11,19 +21,81 @@ interface MatchDetailViewProps {
   onOpenRateModal: () => void;
 }
 
+const STATUS_LABEL: Record<MatchStatus, string> = {
+  PROGRAMADO: 'Programado',
+  CONVOCATORIA_ABIERTA: 'Convocatoria abierta',
+  CONVOCATORIA_CERRADA: 'Convocatoria cerrada',
+  EN_CURSO: 'En curso',
+  FINALIZADO: 'Finalizado',
+  CANCELADO: 'Cancelado',
+};
+
+function sideLabel(side: TeamSide | null): 'A' | 'B' {
+  return side === 'EQUIPO_B' ? 'B' : 'A';
+}
+
 export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
-  match,
-  allMatches,
+  matchId,
   isAdmin,
   onSelectMatch,
   onSelectPlayer,
   onOpenEditModal,
   onOpenRateModal,
 }) => {
-  const [selectedTeamLineup, setSelectedTeamLineup] = useState<'A' | 'B'>('A');
+  const [selectedTeamSide, setSelectedTeamSide] = useState<TeamSide>('EQUIPO_A');
 
-  const currentLineup = selectedTeamLineup === 'A' ? match.lineupA : match.lineupB;
-  const currentTeamName = selectedTeamLineup === 'A' ? match.teamA.name : match.teamB.name;
+  const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
+  const matchQuery = useApi(matchFetcher);
+
+  const allMatchesFetcher = React.useCallback(() => matchesApi.list({ size: 200 }), []);
+  const allMatchesQuery = useApi(allMatchesFetcher);
+
+  const teamsFetcher = React.useCallback(() => teamsApi.list(matchId), [matchId]);
+  const teamsQuery = useApi(teamsFetcher);
+
+  const statsFetcher = React.useCallback(
+    () => statisticsApi.getMatchStatistics(matchId),
+    [matchId],
+  );
+  const statsQuery = useApi(statsFetcher);
+
+  const ratingsFetcher = React.useCallback(() => ratingsApi.list(matchId, { size: 200 }), [matchId]);
+  const ratingsQuery = useApi(ratingsFetcher);
+
+  const participationsFetcher = React.useCallback(
+    () => participationsApi.list(matchId, { size: 200 }),
+    [matchId],
+  );
+  const participationsQuery = useApi(participationsFetcher);
+
+  if (matchQuery.loading) {
+    return <LoadingState label="Cargando partido..." />;
+  }
+
+  if (matchQuery.error || !matchQuery.data) {
+    return (
+      <ErrorState message={matchQuery.error ?? 'No se encontró el partido.'} onRetry={matchQuery.refetch} />
+    );
+  }
+
+  const match = matchQuery.data;
+  const allMatches = allMatchesQuery.data?.content ?? [];
+  const teams = teamsQuery.data ?? [];
+  const matchStats = statsQuery.data ?? [];
+  const ratings = ratingsQuery.data?.content ?? [];
+  const participations = participationsQuery.data?.content ?? [];
+
+  const teamA = teams.find((t) => t.side === 'EQUIPO_A');
+  const teamB = teams.find((t) => t.side === 'EQUIPO_B');
+  const selectedTeam =
+    selectedTeamSide === 'EQUIPO_A' ? teamA : teamB;
+
+  const currentLineup = selectedTeam?.jugadores ?? [];
+  const currentTeamName = selectedTeamSide === 'EQUIPO_A' ? 'Equipo A' : 'Equipo B';
+
+  const scorers = matchStats.filter((p) => p.goles > 0);
+  const hasScore = match.golesEquipoA !== null && match.golesEquipoB !== null;
+  const isFinished = match.estado === 'FINALIZADO';
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16 pt-2">
@@ -31,20 +103,20 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-white p-3.5 rounded-[24px] border border-[#EBE7DF] card-shadow">
         <div className="flex items-center gap-2">
           <span className="material-symbols-outlined text-[#7B8B6F] text-[20px]">sports_soccer</span>
-          <span className="font-mono text-xs font-bold text-[#5A5A40] uppercase tracking-wider">Jornada:</span>
+          <span className="font-mono text-xs font-bold text-[#5A5A40] uppercase tracking-wider">Partidos:</span>
         </div>
         <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar">
           {allMatches.map((m) => (
             <button
               key={m.id}
-              onClick={() => onSelectMatch(m.id)}
+              onClick={() => onSelectMatch(String(m.id))}
               className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold whitespace-nowrap transition-all ${
                 m.id === match.id
                   ? 'bg-[#5A5A40] text-white shadow-xs'
                   : 'bg-[#F1EFE7] text-[#8D8D7E] hover:bg-[#EBE7DF] hover:text-[#5A5A40]'
               }`}
             >
-              J{m.jornada} ({m.teamA.name.slice(0, 7)} vs {m.teamB.name.slice(0, 7)})
+              {formatShortDate(m.fechaHora)}
             </button>
           ))}
         </div>
@@ -58,21 +130,25 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
           </h1>
           <div className="flex flex-wrap items-center gap-2 text-[#8D8D7E] font-body text-sm">
             <span className="material-symbols-outlined text-[18px] text-[#7B8B6F]">calendar_today</span>
-            <span className="font-medium text-[#4A4A3F]">{match.date}</span>
+            <span className="font-medium text-[#4A4A3F]">{formatMatchDate(match.fechaHora)}</span>
             <span className="mx-1">•</span>
             <span
               className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full font-mono text-[11px] font-bold ${
-                match.status === 'finished'
+                match.estado === 'CANCELADO'
+                  ? 'bg-[#FFEBE5] text-[#D97B66]'
+                  : isFinished
                   ? 'bg-[#F1EFE7] text-[#5A5A40]'
                   : 'bg-[#E2E8DC] text-[#48563F]'
               }`}
             >
               <span
                 className={`w-2 h-2 rounded-full ${
-                  match.status === 'finished' ? 'bg-[#8D8D7E]' : 'bg-[#7B8B6F] animate-ping'
+                  isFinished || match.estado === 'CANCELADO'
+                    ? 'bg-[#8D8D7E]'
+                    : 'bg-[#7B8B6F] animate-ping'
                 }`}
               ></span>
-              {match.status === 'finished' ? 'Finalizado' : 'Próximo Encuentro'}
+              {STATUS_LABEL[match.estado]}
             </span>
           </div>
         </div>
@@ -100,19 +176,24 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               </span>
             </div>
             <h2 className="font-serif text-base md:text-xl font-bold text-[#5A5A40]">
-              {match.teamA.name}
+              Equipo A
             </h2>
+            {teamA && (
+              <span className="font-mono text-[11px] font-bold text-[#7B8B6F] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
+                {teamA.jugadores.length} jugadores
+              </span>
+            )}
           </div>
 
           {/* Score & Phase */}
           <div className="flex flex-col items-center px-4 md:px-8">
             <div className="font-serif text-4xl md:text-5xl font-bold text-[#5A5A40] flex items-center gap-3 md:gap-4 tracking-tighter">
-              <span>{match.status === 'finished' ? match.teamA.score ?? 0 : '-'}</span>
+              <span>{isFinished ? match.golesEquipoA ?? 0 : '-'}</span>
               <span className="text-[#DCD6C8] font-light">-</span>
-              <span>{match.status === 'finished' ? match.teamB.score ?? 0 : '-'}</span>
+              <span>{isFinished ? match.golesEquipoB ?? 0 : '-'}</span>
             </div>
             <span className="font-mono text-xs font-bold text-[#8D8D7E] mt-2 uppercase tracking-wider bg-[#F1EFE7] px-3 py-0.5 rounded-full border border-[#EBE7DF]">
-              {match.fase}
+              {STATUS_LABEL[match.estado]}
             </span>
           </div>
 
@@ -124,19 +205,15 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               </span>
             </div>
             <h2 className="font-serif text-base md:text-xl font-bold text-[#5A5A40]">
-              {match.teamB.name}
+              Equipo B
             </h2>
+            {teamB && (
+              <span className="font-mono text-[11px] font-bold text-[#7B8B6F] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
+                {teamB.jugadores.length} jugadores
+              </span>
+            )}
           </div>
         </div>
-
-        {match.mvpName && (
-          <div className="mt-4 pt-4 border-t border-[#EBE7DF] w-full flex justify-center">
-            <span className="bg-[#E2E8DC] text-[#48563F] px-4 py-1 rounded-full text-xs font-mono font-bold flex items-center gap-1.5">
-              <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">star</span>
-              Jugador del Partido (MVP): {match.mvpName}
-            </span>
-          </div>
-        )}
       </div>
 
       {/* BENTO GRID LAYOUT */}
@@ -149,38 +226,29 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
           </h3>
 
           <div className="flex flex-col gap-3 flex-grow">
-            {match.scorers && match.scorers.length > 0 ? (
-              match.scorers.map((scorer, idx) => (
+            {scorers.length > 0 ? (
+              scorers.map((scorer) => (
                 <div
-                  key={idx}
-                  onClick={() => onSelectPlayer(scorer.playerId)}
+                  key={scorer.playerId}
+                  onClick={() => onSelectPlayer(String(scorer.playerId))}
                   className="flex items-center justify-between p-3 rounded-2xl bg-[#F9F7F2]/60 hover:bg-[#F1EFE7] transition-colors border border-[#EBE7DF] cursor-pointer"
                 >
                   <div className="flex items-center gap-3">
-                    {scorer.avatar ? (
-                      <img
-                        src={scorer.avatar}
-                        alt={scorer.name}
-                        className="w-10 h-10 rounded-full object-cover shrink-0 bg-[#D2B48C] border border-[#EBE7DF]"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-10 h-10 rounded-full bg-[#EBE7DF] flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40] shrink-0">
-                        {scorer.name.slice(0, 2).toUpperCase()}
-                      </div>
-                    )}
+                    <div className="w-10 h-10 rounded-full bg-[#EBE7DF] flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40] shrink-0">
+                      {getInitials(scorer.playerNombreCompleto)}
+                    </div>
                     <div className="flex flex-col">
                       <span className="font-body font-bold text-sm text-[#4A4A3F]">
-                        {scorer.name}
+                        {scorer.playerNombreCompleto}
                       </span>
                       <span className="text-[10px] font-mono text-[#8D8D7E]">
-                        Equipo {scorer.team}
+                        Equipo {sideLabel(scorer.teamSide)}
                       </span>
                     </div>
                   </div>
 
                   <div className="flex items-center gap-1 text-[#5A5A40]">
-                    <span className="font-serif text-lg font-bold">{scorer.goals}</span>
+                    <span className="font-serif text-lg font-bold">{scorer.goles}</span>
                     <span className="material-symbols-outlined text-sm text-[#7B8B6F]">sports_soccer</span>
                   </div>
                 </div>
@@ -204,58 +272,43 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
             {/* Team A / Team B Tab Switcher */}
             <div className="flex bg-[#F1EFE7] rounded-xl p-1 border border-[#EBE7DF]">
               <button
-                onClick={() => setSelectedTeamLineup('A')}
+                onClick={() => setSelectedTeamSide('EQUIPO_A')}
                 className={`px-4 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
-                  selectedTeamLineup === 'A'
+                  selectedTeamSide === 'EQUIPO_A'
                     ? 'bg-white shadow-xs text-[#5A5A40]'
                     : 'text-[#8D8D7E] hover:text-[#5A5A40]'
                 }`}
               >
-                {match.teamA.name}
+                Equipo A
               </button>
               <button
-                onClick={() => setSelectedTeamLineup('B')}
+                onClick={() => setSelectedTeamSide('EQUIPO_B')}
                 className={`px-4 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
-                  selectedTeamLineup === 'B'
+                  selectedTeamSide === 'EQUIPO_B'
                     ? 'bg-white shadow-xs text-[#5A5A40]'
                     : 'text-[#8D8D7E] hover:text-[#5A5A40]'
                 }`}
               >
-                {match.teamB.name}
+                Equipo B
               </button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {currentLineup && currentLineup.length > 0 ? (
-              currentLineup.map((player) => (
+            {currentLineup.length > 0 ? (
+              currentLineup.map((member) => (
                 <div
-                  key={player.id}
-                  onClick={() => onSelectPlayer(player.id)}
+                  key={member.playerId}
+                  onClick={() => onSelectPlayer(String(member.playerId))}
                   className="flex items-center gap-3 p-3 rounded-2xl border border-[#EBE7DF] bg-[#F9F7F2]/60 hover:bg-[#F1EFE7] transition-colors cursor-pointer"
                 >
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center font-mono text-xs font-bold ${
-                      player.position === 'POR'
-                        ? 'bg-[#5A5A40] text-white'
-                        : player.position === 'DEF'
-                        ? 'bg-[#7B8B6F] text-white'
-                        : player.position === 'MED'
-                        ? 'bg-[#D2B48C] text-[#5A5A40]'
-                        : 'bg-[#A3B18A] text-[#5A5A40]'
-                    }`}
-                  >
-                    {player.position}
+                  <div className="w-8 h-8 rounded-full bg-[#7B8B6F] text-white flex items-center justify-center font-mono text-xs font-bold">
+                    {getInitials(`${member.nombre} ${member.apellido}`)}
                   </div>
                   <div className="flex flex-col">
                     <span className="font-body text-sm font-semibold text-[#4A4A3F]">
-                      {player.name}
+                      {`${member.nombre} ${member.apellido}`.trim()}
                     </span>
-                    {player.number && (
-                      <span className="text-[10px] font-mono text-[#8D8D7E]">
-                        Dorsal #{player.number}
-                      </span>
-                    )}
                   </div>
                 </div>
               ))
@@ -291,59 +344,47 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               <thead>
                 <tr className="border-b border-[#EBE7DF] text-[#8D8D7E] bg-[#F9F7F2]/40">
                   <th className="py-3 px-4 font-mono text-xs">Jugador</th>
-                  <th className="py-3 px-4 font-mono text-xs text-center">Ritmo</th>
-                  <th className="py-3 px-4 font-mono text-xs text-center">Tiro</th>
-                  <th className="py-3 px-4 font-mono text-xs text-center">Pase</th>
-                  <th className="py-3 px-4 font-mono text-xs text-center">DEF</th>
-                  <th className="py-3 px-4 font-mono text-xs text-right">Global</th>
+                  <th className="py-3 px-4 font-mono text-xs text-center">Calificaciones</th>
+                  <th className="py-3 px-4 font-mono text-xs text-right">Puntaje</th>
                 </tr>
               </thead>
               <tbody className="font-body text-[#4A4A3F]">
-                {match.officialRatings && match.officialRatings.length > 0 ? (
-                  match.officialRatings.map((rating) => (
+                {ratings.length > 0 ? (
+                  ratings.map((rating) => (
                     <tr
-                      key={rating.playerId}
-                      onClick={() => onSelectPlayer(rating.playerId)}
+                      key={rating.id}
+                      onClick={() => onSelectPlayer(String(rating.calificadoId))}
                       className="border-b border-[#EBE7DF]/70 hover:bg-[#F1EFE7]/50 transition-colors cursor-pointer"
                     >
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-full bg-[#EBE7DF] flex items-center justify-center text-[11px] font-mono font-bold text-[#5A5A40]">
-                            {rating.initials}
+                            {getInitials(rating.calificadoNombreCompleto)}
                           </div>
                           <span className="font-body font-semibold text-sm text-[#4A4A3F]">
-                            {rating.name}
+                            {rating.calificadoNombreCompleto}
                           </span>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-center text-[#4A4A3F] text-sm font-semibold">
-                        {rating.ritmo}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-[#4A4A3F] text-sm font-semibold">
-                        {rating.tiro}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-[#4A4A3F] text-sm font-semibold">
-                        {rating.pase}
-                      </td>
-                      <td className="py-3.5 px-4 text-center text-[#4A4A3F] text-sm font-semibold">
-                        {rating.defensa}
+                      <td className="py-3.5 px-4 text-center text-[#8D8D7E] text-xs font-mono">
+                        por {rating.calificadorNombreCompleto}
                       </td>
                       <td className="py-3.5 px-4 text-right">
                         <span
                           className={`inline-flex items-center justify-center font-serif font-bold text-sm px-3 py-1 rounded-full ${
-                            rating.global >= 8.5
+                            rating.puntaje >= 8.5
                               ? 'bg-[#E2E8DC] text-[#48563F]'
                               : 'bg-[#F1EFE7] text-[#5A5A40]'
                           }`}
                         >
-                          {rating.global.toFixed(1)}
+                          {rating.puntaje.toFixed(1)}
                         </span>
                       </td>
                     </tr>
                   ))
                 ) : (
                   <tr>
-                    <td colSpan={6} className="text-center py-6 text-xs font-mono text-[#8D8D7E]">
+                    <td colSpan={3} className="text-center py-6 text-xs font-mono text-[#8D8D7E]">
                       Aún no se han publicado calificaciones para este encuentro.
                     </td>
                   </tr>

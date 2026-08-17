@@ -1,5 +1,6 @@
 import React from 'react';
 import { NavTab, Player } from '../types';
+import { getInitials } from '../utils/format';
 
 interface NavigationProps {
   activeTab: NavTab;
@@ -92,12 +93,18 @@ export const Navigation: React.FC<NavigationProps> = ({
             className="bg-[#F1EFE7] rounded-[24px] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#EBE7DF] transition-colors border border-[#EBE7DF]"
           >
             <div className="w-11 h-11 rounded-full overflow-hidden border border-[#DCD6C8] shrink-0 bg-[#D2B48C]">
-              <img
-                src={currentUser.avatar || currentUser.photoHero || ''}
-                alt={currentUser.name}
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
+              {currentUser.avatar || currentUser.photoHero ? (
+                <img
+                  src={currentUser.avatar || currentUser.photoHero}
+                  alt={currentUser.name}
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40]">
+                  {getInitials(currentUser.name)}
+                </div>
+              )}
             </div>
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] uppercase tracking-widest text-[#A3A395] font-bold">
@@ -138,12 +145,18 @@ export const Navigation: React.FC<NavigationProps> = ({
           onClick={() => setActiveTab('profile')}
           className="w-9 h-9 rounded-full overflow-hidden border border-[#EBE7DF] bg-[#D2B48C]"
         >
-          <img
-            src={currentUser.avatar || currentUser.photoHero || ''}
-            alt={currentUser.name}
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          {currentUser.avatar || currentUser.photoHero ? (
+            <img
+              src={currentUser.avatar || currentUser.photoHero}
+              alt={currentUser.name}
+              className="w-full h-full object-cover"
+              referrerPolicy="no-referrer"
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40]">
+              {getInitials(currentUser.name)}
+            </div>
+          )}
         </button>
 
         {/* Brand */}

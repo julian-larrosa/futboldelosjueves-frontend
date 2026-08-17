@@ -1,81 +1,101 @@
 import React, { useState } from 'react';
 import confetti from 'canvas-confetti';
-import { Match, MatchPlayerRating, Player } from '../types';
+import { participationsApi, ratingsApi } from '../api';
+import { useApi } from '../hooks/useApi';
+import { LoadingState } from './StateViews';
 
 interface RateTeammatesModalProps {
   isOpen: boolean;
   onClose: () => void;
-  match: Match;
-  players: Player[];
-  onSubmitRating: (newRating: MatchPlayerRating) => void;
+  matchId: number;
+  currentPlayerId: number;
 }
 
 export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
   isOpen,
   onClose,
-  match,
-  players,
-  onSubmitRating,
+  matchId,
+  currentPlayerId,
 }) => {
-  const [selectedPlayerId, setSelectedPlayerId] = useState(
-    match.lineupA[0]?.id || players[0]?.id || 'p-carlos-r'
+  const participationsFetcher = React.useCallback(
+    () => participationsApi.list(matchId, { size: 200 }),
+    [matchId],
   );
-  const [ritmo, setRitmo] = useState(8);
-  const [tiro, setTiro] = useState(8);
-  const [pase, setPase] = useState(8);
-  const [defensa, setDefensa] = useState(7);
-  const [comment, setComment] = useState('');
+  const participationsQuery = useApi(participationsFetcher);
+
+  const teammates = (participationsQuery.data?.content ?? []).filter(
+    (p) => p.playerId !== currentPlayerId,
+  );
+
+  const [selectedPlayerId, setSelectedPlayerId] = useState<number | null>(null);
+  const [puntaje, setPuntaje] = useState(8);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
 
   if (!isOpen) return null;
 
+  if (participationsQuery.loading) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+        <div className="bg-white w-full max-w-lg rounded-[28px] p-8 card-shadow border border-[#EBE7DF]">
+          <LoadingState label="Cargando convocatoria..." />
+        </div>
+      </div>
+    );
+  }
+
+  if (participationsQuery.error) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
+        <div className="bg-white w-full max-w-lg rounded-[28px] p-8 card-shadow border border-[#EBE7DF]">
+          <p className="text-center font-body text-sm text-[#4A4A3F]">
+            {participationsQuery.error}
+          </p>
+          <button
+            onClick={onClose}
+            className="w-full mt-4 py-3 rounded-xl font-mono text-xs font-bold bg-[#5A5A40] text-white hover:opacity-90"
+          >
+            Cerrar
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   const targetPlayer =
-    players.find((p) => p.id === selectedPlayerId) ||
-    players[0];
+    teammates.find((p) => p.playerId === selectedPlayerId) ?? teammates[0] ?? null;
 
-  const calculatedGlobal = Number(((ritmo + tiro + pase + defensa) / 4).toFixed(1));
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const initials = targetPlayer.name
-      .split(' ')
-      .map((n) => n[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
-
-    const newRating: MatchPlayerRating = {
-      playerId: targetPlayer.id,
-      name: targetPlayer.name,
-      initials,
-      position: targetPlayer.position,
-      ritmo,
-      tiro,
-      pase,
-      defensa,
-      global: calculatedGlobal,
-    };
-
-    onSubmitRating(newRating);
-
-    // Fire confetti celebration
-    try {
-      confetti({
-        particleCount: 80,
-        spread: 60,
-        origin: { y: 0.6 },
-        colors: ['#5A5A40', '#7B8B6F', '#D2B48C', '#E2E8DC'],
-      });
-    } catch {
-      // ignore if unavailable
+    if (!targetPlayer) {
+      setError('No hay jugadores disponibles para calificar.');
+      return;
     }
-
-    setSubmitted(true);
-    setTimeout(() => {
-      setSubmitted(false);
-      onClose();
-    }, 1200);
+    setBusy(true);
+    setError(null);
+    try {
+      await ratingsApi.create(matchId, { calificadoId: targetPlayer.playerId, puntaje });
+      try {
+        confetti({
+          particleCount: 80,
+          spread: 60,
+          origin: { y: 0.6 },
+          colors: ['#5A5A40', '#7B8B6F', '#D2B48C', '#E2E8DC'],
+        });
+      } catch {
+        // ignore if unavailable
+      }
+      setSubmitted(true);
+      setTimeout(() => {
+        setSubmitted(false);
+        onClose();
+      }, 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al guardar la calificación.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   return (
@@ -98,8 +118,8 @@ export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
               ¡Calificación Enviada!
             </h3>
             <p className="font-body text-[#8D8D7E] text-sm">
-              Has calificado a {targetPlayer.name} con un promedio oficial de{' '}
-              <strong className="text-[#5A5A40] font-bold">{calculatedGlobal}</strong>.
+              Has calificado a {targetPlayer?.playerNombreCompleto} con{' '}
+              <strong className="text-[#5A5A40] font-bold">{puntaje}</strong> / 10.
             </p>
           </div>
         ) : (
@@ -115,136 +135,88 @@ export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
                 Calificar a un Compañero
               </h2>
               <p className="font-body text-[#8D8D7E] text-xs mt-1">
-                Evalúa el desempeño de tus compañeros para la Jornada {match.jornada}.
+                Evalúa el desempeño de tus compañeros con una nota del 1 al 10.
               </p>
             </div>
 
-            {/* Teammate Selection */}
-            <div>
-              <label className="block font-mono text-xs font-bold text-[#5A5A40] mb-2 uppercase">
-                Seleccionar Jugador:
-              </label>
-              <select
-                value={selectedPlayerId}
-                onChange={(e) => setSelectedPlayerId(e.target.value)}
-                className="w-full bg-[#F1EFE7] text-sm font-semibold text-[#4A4A3F] py-3 px-4 rounded-xl border border-[#EBE7DF] focus:outline-none focus:ring-2 focus:ring-[#7B8B6F]"
-              >
-                {players.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} ({p.position})
-                  </option>
-                ))}
-              </select>
-            </div>
+            {error && (
+              <div className="p-3 rounded-xl text-xs font-mono font-bold bg-[#FFEBE5] text-[#9A4A4A] border border-[#D97B66]/40">
+                {error}
+              </div>
+            )}
 
-            {/* Attribute Sliders */}
-            <div className="space-y-4 bg-[#F9F7F2]/60 p-4 rounded-2xl border border-[#EBE7DF]">
-              {/* Ritmo */}
-              <div>
-                <div className="flex justify-between text-xs font-mono mb-1 font-bold">
-                  <span className="text-[#5A5A40]">Ritmo & Despliegue</span>
-                  <span className="text-[#7B8B6F] font-bold text-sm">{ritmo} / 10</span>
+            {teammates.length === 0 ? (
+              <div className="text-center py-8 text-xs font-mono text-[#8D8D7E]">
+                No hay jugadores disponibles para calificar en este encuentro.
+              </div>
+            ) : (
+              <>
+                {/* Teammate Selection */}
+                <div>
+                  <label className="block font-mono text-xs font-bold text-[#5A5A40] mb-2 uppercase">
+                    Seleccionar Jugador:
+                  </label>
+                  <select
+                    value={targetPlayer?.playerId ?? ''}
+                    onChange={(e) => setSelectedPlayerId(Number(e.target.value))}
+                    className="w-full bg-[#F1EFE7] text-sm font-semibold text-[#4A4A3F] py-3 px-4 rounded-xl border border-[#EBE7DF] focus:outline-none focus:ring-2 focus:ring-[#7B8B6F]"
+                  >
+                    {teammates.map((p) => (
+                      <option key={p.playerId} value={p.playerId}>
+                        {p.playerNombreCompleto}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={ritmo}
-                  onChange={(e) => setRitmo(Number(e.target.value))}
-                  className="w-full accent-[#5A5A40]"
-                />
-              </div>
 
-              {/* Tiro */}
-              <div>
-                <div className="flex justify-between text-xs font-mono mb-1 font-bold">
-                  <span className="text-[#5A5A40]">Tiro & Definición</span>
-                  <span className="text-[#7B8B6F] font-bold text-sm">{tiro} / 10</span>
+                {/* Puntaje Slider */}
+                <div className="space-y-4 bg-[#F9F7F2]/60 p-4 rounded-2xl border border-[#EBE7DF]">
+                  <div>
+                    <div className="flex justify-between text-xs font-mono mb-1 font-bold">
+                      <span className="text-[#5A5A40]">Puntaje</span>
+                      <span className="text-[#7B8B6F] font-bold text-sm">{puntaje} / 10</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="1"
+                      max="10"
+                      value={puntaje}
+                      onChange={(e) => setPuntaje(Number(e.target.value))}
+                      className="w-full accent-[#5A5A40]"
+                    />
+                  </div>
+
+                  {/* Selected Value Box */}
+                  <div className="pt-2 border-t border-[#EBE7DF] flex items-center justify-between">
+                    <span className="font-serif font-bold text-sm text-[#5A5A40]">
+                      Calificación Seleccionada:
+                    </span>
+                    <span className="font-serif text-xl font-bold bg-[#5A5A40] text-white px-3.5 py-1 rounded-xl shadow-xs">
+                      {puntaje}
+                    </span>
+                  </div>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={tiro}
-                  onChange={(e) => setTiro(Number(e.target.value))}
-                  className="w-full accent-[#5A5A40]"
-                />
-              </div>
 
-              {/* Pase */}
-              <div>
-                <div className="flex justify-between text-xs font-mono mb-1 font-bold">
-                  <span className="text-[#5A5A40]">Pase & Visión</span>
-                  <span className="text-[#7B8B6F] font-bold text-sm">{pase} / 10</span>
+                {/* Submit button */}
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="w-1/3 py-3 rounded-xl font-mono text-xs font-bold text-[#8D8D7E] hover:bg-[#F1EFE7] hover:text-[#5A5A40] transition-colors border border-[#EBE7DF]"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={busy || !targetPlayer}
+                    className="w-2/3 py-3 rounded-xl font-mono text-xs font-bold bg-[#5A5A40] hover:opacity-90 text-white transition-all shadow-xs flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">send</span>
+                    <span>Guardar Calificación</span>
+                  </button>
                 </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={pase}
-                  onChange={(e) => setPase(Number(e.target.value))}
-                  className="w-full accent-[#5A5A40]"
-                />
-              </div>
-
-              {/* Defensa */}
-              <div>
-                <div className="flex justify-between text-xs font-mono mb-1 font-bold">
-                  <span className="text-[#5A5A40]">Defensa & Presión</span>
-                  <span className="text-[#7B8B6F] font-bold text-sm">{defensa} / 10</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={defensa}
-                  onChange={(e) => setDefensa(Number(e.target.value))}
-                  className="w-full accent-[#5A5A40]"
-                />
-              </div>
-
-              {/* Calculated Rating Box */}
-              <div className="pt-2 border-t border-[#EBE7DF] flex items-center justify-between">
-                <span className="font-serif font-bold text-sm text-[#5A5A40]">
-                  Calificación Global Calculada:
-                </span>
-                <span className="font-serif text-xl font-bold bg-[#5A5A40] text-white px-3.5 py-1 rounded-xl shadow-xs">
-                  {calculatedGlobal}
-                </span>
-              </div>
-            </div>
-
-            {/* Comment */}
-            <div>
-              <label className="block font-mono text-xs font-bold text-[#5A5A40] mb-1.5 uppercase">
-                Comentario o Reconocimiento (Opcional):
-              </label>
-              <textarea
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Ej. Gran asistencia en el segundo gol y mucho sacrificio defensivo..."
-                rows={2}
-                className="w-full bg-[#F1EFE7] text-xs text-[#4A4A3F] p-3 rounded-xl border border-[#EBE7DF] focus:outline-none focus:ring-2 focus:ring-[#7B8B6F]"
-              ></textarea>
-            </div>
-
-            {/* Submit button */}
-            <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                onClick={onClose}
-                className="w-1/3 py-3 rounded-xl font-mono text-xs font-bold text-[#8D8D7E] hover:bg-[#F1EFE7] hover:text-[#5A5A40] transition-colors border border-[#EBE7DF]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                className="w-2/3 py-3 rounded-xl font-mono text-xs font-bold bg-[#5A5A40] hover:opacity-90 text-white transition-all shadow-xs flex items-center justify-center gap-2"
-              >
-                <span className="material-symbols-outlined text-[18px]">send</span>
-                <span>Guardar Calificación</span>
-              </button>
-            </div>
+              </>
+            )}
           </form>
         )}
       </div>
