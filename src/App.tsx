@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
-import { NavTab, Player, Match, MatchPlayerRating } from './types';
+import { NavTab, Player } from './types';
 import { toPlayer } from './api';
 import { useAuth } from './auth/AuthContext';
-import { PLAYERS, MATCHES } from './data/mockData';
 import { Navigation } from './components/Navigation';
 import { DashboardView } from './components/DashboardView';
 import { RankingsView } from './components/RankingsView';
@@ -18,13 +17,14 @@ import { LoginScreen } from './components/LoginScreen';
 export default function App() {
   const { isAuthenticated, player, isAdmin, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<NavTab>('rankings');
-  const [players, setPlayers] = useState<Player[]>(PLAYERS);
-  const [matches, setMatches] = useState<Match[]>(MATCHES);
 
   const sessionPlayer = player ? toPlayer(player) : null;
-  const currentUserId = player ? String(player.id) : '';
-  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(currentUserId || '');
-  const [selectedMatchId, setSelectedMatchId] = useState<string>('match-13-featured');
+  const currentUserId = player ? player.id : 0;
+
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>(
+    player ? String(player.id) : '',
+  );
+  const [selectedMatchId, setSelectedMatchId] = useState<number | null>(null);
   const [isViewingSpecificMatch, setIsViewingSpecificMatch] = useState<boolean>(false);
 
   // Modals state
@@ -32,11 +32,9 @@ export default function App() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
 
-  const currentUser: Player = sessionPlayer ?? players.find((p) => p.id === currentUserId) ?? players[0];
-  const selectedPlayer = players.find((p) => p.id === selectedPlayerId) || currentUser;
-  const currentMatch = matches.find((m) => m.id === selectedMatchId) || matches[0];
+  const currentUser: Player | null = sessionPlayer;
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !currentUser) {
     return <LoginScreen />;
   }
 
@@ -48,7 +46,7 @@ export default function App() {
   };
 
   const handleSelectMatch = (matchId: string) => {
-    setSelectedMatchId(matchId);
+    setSelectedMatchId(Number(matchId));
     setActiveTab('matches');
     setIsViewingSpecificMatch(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -57,11 +55,12 @@ export default function App() {
   const handleTabChange = (tab: NavTab) => {
     setActiveTab(tab);
     if (tab === 'profile') {
-      setSelectedPlayerId(currentUserId);
+      setSelectedPlayerId(String(currentUserId));
     }
-    if (tab === 'matches' && !isViewingSpecificMatch) {
-      // Keep state or reset
-    } else if (tab !== 'matches') {
+    if (tab === 'matches') {
+      setIsViewingSpecificMatch(false);
+      setSelectedMatchId(null);
+    } else {
       setIsViewingSpecificMatch(false);
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -71,48 +70,9 @@ export default function App() {
     logout();
   };
 
-  // Callback to update official ratings
-  const handleSubmitRating = (newRating: MatchPlayerRating) => {
-    setMatches((prevMatches) =>
-      prevMatches.map((m) => {
-        if (m.id === selectedMatchId) {
-          const existingIdx = m.officialRatings.findIndex((r) => r.playerId === newRating.playerId);
-          let updatedRatings = [...m.officialRatings];
-          if (existingIdx >= 0) {
-            updatedRatings[existingIdx] = newRating;
-          } else {
-            updatedRatings.push(newRating);
-          }
-          return {
-            ...m,
-            officialRatings: updatedRatings,
-          };
-        }
-        return m;
-      })
-    );
-
-    // Also update player's rating if applicable
-    setPlayers((prevPlayers) =>
-      prevPlayers.map((p) => {
-        if (p.id === newRating.playerId) {
-          const newAvg = Number(((p.rating + newRating.global) / 2).toFixed(1));
-          return {
-            ...p,
-            rating: newAvg,
-            ovr: newAvg,
-            recentFormRatings: [...p.recentFormRatings.slice(1), newRating.global],
-          };
-        }
-        return p;
-      })
-    );
-  };
-
-  const handleSaveMatch = (updatedMatch: Match) => {
-    setMatches((prevMatches) =>
-      prevMatches.map((m) => (m.id === updatedMatch.id ? updatedMatch : m))
-    );
+  const openRateModalForMatch = (matchId: string) => {
+    setSelectedMatchId(Number(matchId));
+    setIsRateModalOpen(true);
   };
 
   return (
@@ -131,82 +91,82 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <DashboardView
             currentUser={currentUser}
-            matches={matches}
+            currentPlayerId={currentUserId}
             onSelectMatch={handleSelectMatch}
+            onOpenRatingForMatch={openRateModalForMatch}
             setActiveTab={handleTabChange}
           />
         )}
 
         {activeTab === 'rankings' && (
           <RankingsView
-            players={players}
             onSelectPlayer={handleSelectPlayer}
+            currentPlayerId={currentUserId}
           />
         )}
 
         {activeTab === 'profile' && (
           <ProfileView
-            player={selectedPlayer}
-            allPlayers={players}
-            onSelectPlayer={setSelectedPlayerId}
-            onSelectMatch={handleSelectMatch}
+            playerId={Number(selectedPlayerId) || currentUserId}
+            currentPlayerId={currentUserId}
+            onSelectPlayer={handleSelectPlayer}
           />
         )}
 
         {activeTab === 'matches' && (
           <>
-            {isViewingSpecificMatch ? (
+            {isViewingSpecificMatch && selectedMatchId !== null ? (
               <div className="space-y-4">
                 <button
-                  onClick={() => setIsViewingSpecificMatch(false)}
+                  onClick={() => {
+                    setIsViewingSpecificMatch(false);
+                    setSelectedMatchId(null);
+                  }}
                   className="inline-flex items-center gap-2 text-xs font-mono font-bold text-[#5A5A40] hover:text-[#2D2D24] bg-white px-4 py-2 rounded-xl border border-[#EBE7DF] card-shadow transition-all"
                 >
                   <span className="material-symbols-outlined text-[18px]">arrow_back</span>
                   <span>Volver a todos los partidos</span>
                 </button>
                 <MatchDetailView
-                  match={currentMatch}
-                  allMatches={matches}
+                  matchId={selectedMatchId}
                   isAdmin={isAdmin}
-                  onSelectMatch={setSelectedMatchId}
+                  onSelectMatch={handleSelectMatch}
                   onSelectPlayer={handleSelectPlayer}
                   onOpenEditModal={() => setIsEditModalOpen(true)}
                   onOpenRateModal={() => setIsRateModalOpen(true)}
                 />
               </div>
             ) : (
-              <MatchesListView
-                matches={matches}
-                onSelectMatch={handleSelectMatch}
-              />
+              <MatchesListView onSelectMatch={handleSelectMatch} />
             )}
           </>
         )}
 
         {activeTab === 'players' && (
           <PlayersDirectoryView
-            players={players}
             onSelectPlayer={handleSelectPlayer}
+            currentPlayerId={currentUserId}
           />
         )}
       </main>
 
       {/* MODALS */}
-      <RateTeammatesModal
-        isOpen={isRateModalOpen}
-        onClose={() => setIsRateModalOpen(false)}
-        match={currentMatch}
-        players={players}
-        onSubmitRating={handleSubmitRating}
-      />
+      {selectedMatchId !== null && (
+        <RateTeammatesModal
+          isOpen={isRateModalOpen}
+          onClose={() => setIsRateModalOpen(false)}
+          matchId={selectedMatchId}
+          currentPlayerId={currentUserId}
+        />
+      )}
 
-      <EditMatchModal
-        isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
-        match={currentMatch}
-        players={players}
-        onSaveMatch={handleSaveMatch}
-      />
+      {selectedMatchId !== null && (
+        <EditMatchModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          matchId={selectedMatchId}
+        />
+      )}
 
       <NotificationsModal
         isOpen={isNotificationsModalOpen}

@@ -1,23 +1,46 @@
 import React, { useState } from 'react';
-import { Player } from '../types';
+import { playersApi, statisticsApi, toPlayer } from '../api';
+import { useApi } from '../hooks/useApi';
+import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { getInitials } from '../utils/format';
 
 interface PlayersDirectoryViewProps {
-  players: Player[];
   onSelectPlayer: (playerId: string) => void;
+  currentPlayerId: number;
 }
 
 export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
-  players,
   onSelectPlayer,
+  currentPlayerId,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPosition, setSelectedPosition] = useState<string>('TODOS');
 
+  const fetcher = React.useCallback(async () => {
+    const players = await playersApi.list({ size: 200 });
+    const standings = await statisticsApi.getStandings();
+    const standingsById = new Map(standings.map((s) => [s.playerId, s]));
+    return { players: players.content, total: players.totalElements, standingsById };
+  }, []);
+
+  const { data, loading, error, refetch } = useApi(fetcher);
+
+  if (loading) {
+    return <LoadingState label="Cargando jugadores..." />;
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={refetch} />;
+  }
+
+  const players = data?.players ?? [];
+  const standingsById = data?.standingsById ?? new Map();
+
   const filtered = players.filter((p) => {
-    const matchesSearch =
-      p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      p.roleTitle.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPos = selectedPosition === 'TODOS' || p.position === selectedPosition;
+    const name = `${p.nombre} ${p.apellido}`.toLowerCase();
+    const pos = toPlayer(p).position;
+    const matchesSearch = name.includes(searchTerm.toLowerCase());
+    const matchesPos = selectedPosition === 'TODOS' || pos === selectedPosition;
     return matchesSearch && matchesPos;
   });
 
@@ -29,7 +52,7 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
           Directorio de Jugadores
         </h1>
         <p className="font-body text-[#8D8D7E] text-sm mt-0.5">
-          Plantel oficial de la Liga FDLJ 2024 ({players.length} fichados)
+          Plantel oficial de la Liga FDLJ ({data?.total ?? players.length} fichados)
         </p>
       </div>
 
@@ -41,7 +64,7 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
           </span>
           <input
             type="text"
-            placeholder="Buscar por nombre o rol..."
+            placeholder="Buscar por nombre..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full bg-white pl-10 pr-4 py-2.5 rounded-2xl border border-[#EBE7DF] text-sm text-[#4A4A3F] placeholder-[#8D8D7E] focus:outline-none focus:ring-2 focus:ring-[#7B8B6F] card-shadow"
@@ -67,94 +90,88 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
       </div>
 
       {/* Players Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((player) => {
-          return (
-            <div
-              key={player.id}
-              onClick={() => onSelectPlayer(player.id)}
-              className={`bg-white rounded-[28px] p-5 card-shadow card-hover border border-[#EBE7DF] cursor-pointer flex flex-col justify-between transition-all ${
-                player.isCurrentUser ? 'ring-2 ring-[#5A5A40]' : ''
-              }`}
-            >
-              <div>
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <div className="flex items-center gap-3">
-                    {player.avatar ? (
-                      <img
-                        src={player.avatar}
-                        alt={player.name}
-                        className="w-12 h-12 rounded-full object-cover border border-[#EBE7DF] shrink-0 bg-[#D2B48C]"
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
+      {filtered.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {filtered.map((player) => {
+            const ui = toPlayer(player);
+            const standing = standingsById.get(player.id);
+            const isCurrentUser = player.id === currentPlayerId;
+            return (
+              <div
+                key={player.id}
+                onClick={() => onSelectPlayer(String(player.id))}
+                className={`bg-white rounded-[28px] p-5 card-shadow card-hover border border-[#EBE7DF] cursor-pointer flex flex-col justify-between transition-all ${
+                  isCurrentUser ? 'ring-2 ring-[#5A5A40]' : ''
+                }`}
+              >
+                <div>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="flex items-center gap-3">
                       <div className="w-12 h-12 rounded-full bg-[#EBE7DF] flex items-center justify-center font-mono font-bold text-sm text-[#5A5A40] shrink-0">
-                        {player.name
-                          .split(' ')
-                          .map((n) => n[0])
-                          .join('')
-                          .slice(0, 2)}
+                        {getInitials(ui.name)}
                       </div>
-                    )}
-                    <div>
-                      <h3 className="font-serif font-bold text-base text-[#5A5A40] leading-tight">
-                        {player.name}
-                      </h3>
-                      <p className="font-mono text-xs text-[#8D8D7E] mt-0.5">
-                        {player.roleTitle}
-                      </p>
+                      <div>
+                        <h3 className="font-serif font-bold text-base text-[#5A5A40] leading-tight">
+                          {ui.name}
+                        </h3>
+                        <p className="font-mono text-xs text-[#8D8D7E] mt-0.5">
+                          {player.email}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* OVR Badge */}
+                    <div className="bg-[#5A5A40] text-white px-2.5 py-1 rounded-full font-serif font-bold text-sm flex items-center gap-1 shadow-xs">
+                      <span className="text-[9px] font-mono opacity-80">OVR</span>
+                      <span>{ui.ovr.toFixed(1)}</span>
                     </div>
                   </div>
 
-                  {/* OVR Badge */}
-                  <div className="bg-[#5A5A40] text-white px-2.5 py-1 rounded-full font-serif font-bold text-sm flex items-center gap-1 shadow-xs">
-                    <span className="text-[9px] font-mono opacity-80">OVR</span>
-                    <span>{player.ovr.toFixed(1)}</span>
+                  {/* Quick stats chips */}
+                  <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#EBE7DF] text-center my-3 bg-[#F9F7F2]/60 rounded-2xl">
+                    <div>
+                      <span className="block font-serif font-bold text-sm text-[#5A5A40]">
+                        {standing?.partidosJugados ?? 0}
+                      </span>
+                      <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
+                        Partidos
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block font-serif font-bold text-sm text-[#7B8B6F]">
+                        {standing?.golesAFavor ?? 0}
+                      </span>
+                      <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
+                        Goles
+                      </span>
+                    </div>
+                    <div>
+                      <span className="block font-serif font-bold text-sm text-[#5A5A40]">
+                        {standing?.puntos ?? 0}
+                      </span>
+                      <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
+                        Puntos
+                      </span>
+                    </div>
                   </div>
                 </div>
 
-                {/* Quick stats chips */}
-                <div className="grid grid-cols-3 gap-2 py-3 border-y border-[#EBE7DF] text-center my-3 bg-[#F9F7F2]/60 rounded-2xl">
-                  <div>
-                    <span className="block font-serif font-bold text-sm text-[#5A5A40]">
-                      {player.matchesPlayed}
-                    </span>
-                    <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
-                      Partidos
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block font-serif font-bold text-sm text-[#7B8B6F]">
-                      {player.goals}
-                    </span>
-                    <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
-                      Goles
-                    </span>
-                  </div>
-                  <div>
-                    <span className="block font-serif font-bold text-sm text-[#5A5A40]">
-                      {player.points}
-                    </span>
-                    <span className="block font-mono text-[9px] text-[#8D8D7E] uppercase">
-                      Puntos
-                    </span>
-                  </div>
+                <div className="flex items-center justify-between pt-1">
+                  <span className="text-[11px] font-mono font-bold text-[#5A5A40] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
+                    {ui.position}
+                  </span>
+                  <span className="text-xs font-mono font-bold text-[#7B8B6F] flex items-center gap-1 hover:underline">
+                    <span>Ver Atributos</span>
+                    <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
+                  </span>
                 </div>
               </div>
-
-              <div className="flex items-center justify-between pt-1">
-                <span className="text-[11px] font-mono font-bold text-[#5A5A40] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
-                  {player.position}
-                </span>
-                <span className="text-xs font-mono font-bold text-[#7B8B6F] flex items-center gap-1 hover:underline">
-                  <span>Ver Atributos</span>
-                  <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
-                </span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      ) : (
+        <EmptyState message="No se encontraron jugadores con los filtros aplicados." />
+      )}
     </div>
   );
 };
