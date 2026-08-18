@@ -58,7 +58,7 @@ export interface PlayerResponse {
   email: string;
   posicion: PlayerPosition;
   activo: boolean;
-  attributes: PlayerAttributesResponse;
+  attributes: PlayerAttributesResponse | null;
 }
 
 export interface AuthResponse {

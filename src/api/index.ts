@@ -18,6 +18,7 @@ export { teamsApi } from './teamsApi';
 export { statisticsApi } from './statisticsApi';
 
 export {
+  hasOfficialAttributes,
   mapAttributeTypeToKey,
   mapMatchStatus,
   mapPlayerPosition,

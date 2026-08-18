@@ -52,9 +52,13 @@ function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+export function hasOfficialAttributes(player: PlayerResponse): boolean {
+  return player.attributes !== null && player.attributes.attributes.length > 0;
+}
+
 export function toPlayer(player: PlayerResponse): Player {
   const attributes: PlayerAttributes = { definicion: 0, pase: 0, tecnica: 0, mentalidad: 0, fisico: 0 };
-  for (const attribute of player.attributes.attributes) {
+  for (const attribute of player.attributes?.attributes ?? []) {
     attributes[mapAttributeTypeToKey(attribute.attributeType)] = attribute.currentValue;
   }
   const ovr = roundToOneDecimal(average(Object.values(attributes)));
