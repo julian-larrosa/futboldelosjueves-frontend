@@ -1,0 +1,19 @@
+@import 'tailwindcss';
+
+@theme {
+  --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --color-pitch-50: #f0fdf4;
+  --color-pitch-100: #dcfce7;
+  --color-pitch-500: #22c55e;
+  --color-pitch-600: #16a34a;
+  --color-pitch-700: #15803d;
+  --color-pitch-900: #14532d;
+}
+
+html {
+  font-family: var(--font-sans);
+}
+
+body {
+  @apply bg-gray-100 text-gray-900 antialiased;
+}
