@@ -2,6 +2,22 @@
 
 @theme {
   --font-sans: 'Inter', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  --color-background: #0a0f14;
+  --color-foreground: #f2f5f7;
+  --color-card: #111a21;
+  --color-card-foreground: #f2f5f7;
+  --color-muted: #1a2530;
+  --color-muted-foreground: #94a3b8;
+  --color-border: #23303c;
+  --color-input: #1a2530;
+  --color-primary: #22c55e;
+  --color-primary-foreground: #052e16;
+  --color-secondary: #16a34a;
+  --color-accent: #3b82f6;
+  --color-destructive: #ef4444;
+  --color-ring: #22c55e;
+
   --color-pitch-50: #f0fdf4;
   --color-pitch-100: #dcfce7;
   --color-pitch-500: #22c55e;
@@ -15,5 +31,5 @@ html {
 }
 
 body {
-  @apply bg-gray-100 text-gray-900 antialiased;
+  @apply bg-background text-foreground antialiased;
 }
