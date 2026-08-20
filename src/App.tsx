@@ -6,7 +6,9 @@ import { useAuth } from '@/auth/useAuth'
 import { AppShell } from '@/components/layout'
 import { LoginPage, RegisterHinchaPage, RegisterPage } from '@/features/auth'
 import { DashboardPage } from '@/features/dashboard'
+import { HinchasPage } from '@/features/hinchas'
 import { PlaceholderPage } from '@/features/placeholder'
+import { ForcedPasswordChange } from '@/components/password'
 import { Role } from '@/types'
 
 function HomeRedirect() {
@@ -19,6 +21,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" theme="dark" />
+      <ForcedPasswordChange />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
 
@@ -66,7 +69,7 @@ export default function App() {
             path="/hinchas"
             element={
               <ProtectedRoute roles={[Role.ADMIN]}>
-                <PlaceholderPage />
+                <HinchasPage />
               </ProtectedRoute>
             }
           />

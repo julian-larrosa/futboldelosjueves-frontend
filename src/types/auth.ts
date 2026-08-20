@@ -13,6 +13,7 @@ export interface AuthResponse {
   tokenType: string
   user: UserResponse
   player: PlayerAuthInfo | null
+  mustChangePassword: boolean
 }
 
 export interface PlayerAuthInfo {
@@ -44,4 +45,14 @@ export interface RegisterHinchaRequest {
   apellido: string
   email: string
   password: string
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string
+  newPassword: string
+}
+
+export interface ResetPasswordRequest {
+  email: string
+  newPassword: string
 }
