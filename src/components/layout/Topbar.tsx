@@ -1,8 +1,10 @@
-import { LogOut, Menu } from 'lucide-react'
+import { useState } from 'react'
+import { KeyRound, LogOut, Menu } from 'lucide-react'
 import { useAuth } from '@/auth/useAuth'
 import { ROLE_LABEL } from '@/types'
 import { initials } from '@/utils/format'
 import { Button } from '@/components/ui'
+import { ChangePasswordModal } from '@/components/password'
 
 interface TopbarProps {
   onMenuClick: () => void
@@ -10,6 +12,7 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const { user, logout } = useAuth()
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false)
 
   if (!user) return null
 
@@ -32,11 +35,17 @@ export function Topbar({ onMenuClick }: TopbarProps) {
             <p className="text-xs leading-tight text-muted-foreground">{ROLE_LABEL[user.role]}</p>
           </div>
         </div>
+        <Button variant="ghost" size="sm" onClick={() => setChangePasswordOpen(true)} aria-label="Cambiar contraseña">
+          <KeyRound className="h-4 w-4" />
+          <span className="hidden sm:inline">Contraseña</span>
+        </Button>
         <Button variant="ghost" size="sm" onClick={logout} aria-label="Cerrar sesión">
           <LogOut className="h-4 w-4" />
           <span className="hidden sm:inline">Salir</span>
         </Button>
       </div>
+
+      <ChangePasswordModal open={changePasswordOpen} onClose={() => setChangePasswordOpen(false)} />
     </header>
   )
 }
