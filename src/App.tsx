@@ -1,7 +1,7 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
-import { useAuth } from '@/auth/AuthContext'
+import { useAuth } from '@/auth/useAuth'
 import { PlaceholderPage } from '@/features/placeholder'
 import { Role } from '@/types'
 

@@ -20,7 +20,7 @@ apiClient.interceptors.request.use((config) => {
 
 let sessionExpiredHandler: (() => void) | null = null
 
-export function setSessionExpiredHandler(handler: () => void): void {
+export function setSessionExpiredHandler(handler: (() => void) | null): void {
   sessionExpiredHandler = handler
 }
 

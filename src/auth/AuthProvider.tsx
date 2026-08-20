@@ -1,24 +1,12 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ReactNode } from 'react'
 import * as authApi from '@/api/auth'
 import { clearToken, getToken, setToken } from '@/api/token'
 import { setSessionExpiredHandler } from '@/api/client'
+import { AuthContext } from './auth-context'
 import type { LoginRequest, RegisterHinchaRequest, RegisterRequest, Role, UserResponse } from '@/types'
 
 const USER_KEY = 'fdlj_user'
-
-interface AuthContextValue {
-  user: UserResponse | null
-  token: string | null
-  isAuthenticated: boolean
-  hasRole: (role: Role) => boolean
-  login: (data: LoginRequest) => Promise<void>
-  register: (data: RegisterRequest) => Promise<void>
-  registerHincha: (data: RegisterHinchaRequest) => Promise<void>
-  logout: () => void
-}
-
-const AuthContext = createContext<AuthContextValue | null>(null)
 
 function loadUser(): UserResponse | null {
   const raw = localStorage.getItem(USER_KEY)
@@ -80,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => setSessionExpiredHandler(null)
   }, [logout])
 
-  const value = useMemo<AuthContextValue>(
+  const value = useMemo(
     () => ({
       user,
       token,
@@ -95,12 +83,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
-}
-
-export function useAuth(): AuthContextValue {
-  const context = useContext(AuthContext)
-  if (!context) {
-    throw new Error('useAuth debe usarse dentro de <AuthProvider>')
-  }
-  return context
 }
