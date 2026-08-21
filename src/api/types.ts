@@ -58,14 +58,16 @@ export interface PlayerResponse {
   email: string;
   posicion: PlayerPosition;
   activo: boolean;
-  attributes: PlayerAttributesResponse;
+  attributes: PlayerAttributesResponse | null;
 }
 
 export interface AuthResponse {
   token: string;
   tokenType: string;
+  refreshToken?: string;
   user: UserResponse;
-  player: PlayerResponse;
+  player: PlayerResponse | null;
+  mustChangePassword: boolean;
 }
 
 export interface MatchResponse {
@@ -194,6 +196,23 @@ export interface RegisterRequest {
   nombre: string;
   apellido: string;
   posicion: PlayerPosition;
+}
+
+export interface RegisterHinchaRequest {
+  nombre: string;
+  apellido: string;
+  email: string;
+  password: string;
+}
+
+export interface ForgotPasswordRequest {
+  email: string;
+  newPassword: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 export interface PlayerRequest {

@@ -2,21 +2,62 @@ import React from 'react';
 import { NavTab, Player } from '../types';
 import { getInitials } from '../utils/format';
 
+export interface NextMatchInfo {
+  date: string;
+  time: string;
+  location: string;
+}
+
 interface NavigationProps {
   activeTab: NavTab;
   setActiveTab: (tab: NavTab) => void;
-  currentUser: Player;
+  currentUser: Player | null;
+  fallbackName: string;
   onLogout: () => void;
   onOpenNotifications: () => void;
+  nextMatch?: NextMatchInfo | null;
 }
 
 export const Navigation: React.FC<NavigationProps> = ({
   activeTab,
   setActiveTab,
   currentUser,
+  fallbackName,
   onLogout,
   onOpenNotifications,
+  nextMatch,
 }) => {
+  const isHincha = currentUser === null;
+  const homeTab: NavTab = isHincha ? 'rankings' : 'dashboard';
+  const displayName = currentUser?.name ?? fallbackName;
+
+  const navigationItems = (
+    [
+      { tab: 'dashboard' as NavTab, label: 'Dashboard', icon: 'dashboard' },
+      { tab: 'matches' as NavTab, label: 'Partidos', icon: 'sports_soccer' },
+      { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
+      { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
+      { tab: 'profile' as NavTab, label: 'Mi Perfil', icon: 'person' },
+    ] as const
+  ).filter((item) => !(isHincha && (item.tab === 'dashboard' || item.tab === 'profile')));
+
+  const renderAvatar = (sizeClass: string) => (
+    <div className={`${sizeClass} rounded-full overflow-hidden border border-[#DCD6C8] shrink-0 bg-[#D2B48C]`}>
+      {currentUser?.avatar || currentUser?.photoHero ? (
+        <img
+          src={currentUser.avatar || currentUser.photoHero}
+          alt={displayName}
+          className="w-full h-full object-cover"
+          referrerPolicy="no-referrer"
+        />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40]">
+          {getInitials(displayName)}
+        </div>
+      )}
+    </div>
+  );
+
   return (
     <>
       {/* DESKTOP SIDE NAVIGATION */}
@@ -24,7 +65,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div>
           {/* Brand */}
           <div
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => setActiveTab(homeTab)}
             className="flex items-center gap-3 mb-10 cursor-pointer group"
           >
             <div className="w-10 h-10 bg-[#7B8B6F] rounded-full flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
@@ -35,20 +76,14 @@ export const Navigation: React.FC<NavigationProps> = ({
                 FDLJ
               </span>
               <span className="text-[9px] uppercase font-mono tracking-widest text-[#A3A395] font-bold -mt-1">
-                Temporada 2024
+                Temporada {new Date().getFullYear()}
               </span>
             </div>
           </div>
 
           {/* Navigation Items */}
           <nav className="flex flex-col gap-2">
-            {[
-              { tab: 'dashboard' as NavTab, label: 'Dashboard', icon: 'dashboard' },
-              { tab: 'matches' as NavTab, label: 'Partidos', icon: 'sports_soccer' },
-              { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
-              { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
-              { tab: 'profile' as NavTab, label: 'Mi Perfil', icon: 'person' },
-            ].map((item) => {
+            {navigationItems.map((item) => {
               const isActive = activeTab === item.tab;
               return (
                 <button
@@ -89,43 +124,42 @@ export const Navigation: React.FC<NavigationProps> = ({
         {/* Bottom Section: Profile & Upcoming summary in Natural Tones Card */}
         <div className="space-y-3 pt-4">
           <div
-            onClick={() => setActiveTab('profile')}
-            className="bg-[#F1EFE7] rounded-[24px] p-4 flex items-center gap-3 cursor-pointer hover:bg-[#EBE7DF] transition-colors border border-[#EBE7DF]"
+            onClick={() => !isHincha && setActiveTab('profile')}
+            className={`bg-[#F1EFE7] rounded-[24px] p-4 flex items-center gap-3 border border-[#EBE7DF] transition-colors ${
+              isHincha ? 'cursor-default' : 'cursor-pointer hover:bg-[#EBE7DF]'
+            }`}
           >
-            <div className="w-11 h-11 rounded-full overflow-hidden border border-[#DCD6C8] shrink-0 bg-[#D2B48C]">
-              {currentUser.avatar || currentUser.photoHero ? (
-                <img
-                  src={currentUser.avatar || currentUser.photoHero}
-                  alt={currentUser.name}
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40]">
-                  {getInitials(currentUser.name)}
-                </div>
-              )}
-            </div>
+            {renderAvatar('w-11 h-11')}
             <div className="flex flex-col min-w-0">
               <span className="text-[10px] uppercase tracking-widest text-[#A3A395] font-bold">
-                Usuario Activo
+                {isHincha ? 'Hincha' : 'Usuario Activo'}
               </span>
               <p className="font-serif font-bold text-sm text-[#5A5A40] truncate leading-tight">
-                {currentUser.name}
+                {displayName}
               </p>
-              <span className="font-mono text-[11px] text-[#7B8B6F] font-bold mt-0.5">
-                Rating {currentUser.rating.toFixed(1)}
-              </span>
+              {!isHincha && (
+                <span className="font-mono text-[11px] text-[#7B8B6F] font-bold mt-0.5">
+                  Rating {currentUser.rating.toFixed(1)}
+                </span>
+              )}
             </div>
           </div>
 
           <div className="p-3.5 bg-[#F9F7F2] rounded-2xl border border-[#EBE7DF] text-xs">
             <div className="flex items-center justify-between font-mono text-[#8D8D7E] text-[10px] uppercase font-bold tracking-wider mb-1">
               <span>PRÓXIMO ENCUENTRO</span>
-              <span className="text-[#7B8B6F]">J14</span>
             </div>
-            <p className="font-serif font-bold text-[#5A5A40]">Jueves 20:30 hrs</p>
-            <p className="text-[#8D8D7E] text-[11px]">Cancha 2 • Cancha sintética</p>
+            {nextMatch ? (
+              <>
+                <p className="font-serif font-bold text-[#5A5A40]">{nextMatch.date} {nextMatch.time}</p>
+                <p className="text-[#8D8D7E] text-[11px]">{nextMatch.location || 'Por confirmar'}</p>
+              </>
+            ) : (
+              <>
+                <p className="font-serif font-bold text-[#5A5A40]">Sin partidos programados</p>
+                <p className="text-[#8D8D7E] text-[11px]">No hay próximos encuentros</p>
+              </>
+            )}
           </div>
 
           <button
@@ -142,26 +176,16 @@ export const Navigation: React.FC<NavigationProps> = ({
       <header className="md:hidden sticky top-0 w-full z-50 bg-[#F9F7F2]/95 backdrop-blur-md border-b border-[#EBE7DF] px-4 py-3.5 flex justify-between items-center transition-all shadow-[0_2px_10px_rgba(90,90,64,0.03)]">
         {/* Leading Avatar */}
         <button
-          onClick={() => setActiveTab('profile')}
-          className="w-9 h-9 rounded-full overflow-hidden border border-[#EBE7DF] bg-[#D2B48C]"
+          onClick={() => !isHincha && setActiveTab('profile')}
+          className={`w-9 h-9 rounded-full bg-[#D2B48C] ${isHincha ? 'cursor-default' : ''}`}
+          aria-label={displayName}
         >
-          {currentUser.avatar || currentUser.photoHero ? (
-            <img
-              src={currentUser.avatar || currentUser.photoHero}
-              alt={currentUser.name}
-              className="w-full h-full object-cover"
-              referrerPolicy="no-referrer"
-            />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center font-mono text-xs font-bold text-[#5A5A40]">
-              {getInitials(currentUser.name)}
-            </div>
-          )}
+          {renderAvatar('w-9 h-9')}
         </button>
 
         {/* Brand */}
         <button
-          onClick={() => setActiveTab('dashboard')}
+          onClick={() => setActiveTab(homeTab)}
           className="flex items-center gap-2"
         >
           <div className="w-6 h-6 bg-[#7B8B6F] rounded-full flex items-center justify-center text-white">
@@ -193,13 +217,17 @@ export const Navigation: React.FC<NavigationProps> = ({
 
       {/* MOBILE BOTTOM NAVIGATION BAR */}
       <nav className="md:hidden fixed bottom-0 w-full z-50 bg-white/95 backdrop-blur-md border-t border-[#EBE7DF] shadow-[0_-4px_16px_rgba(90,90,64,0.06)] pb-safe pt-2 px-2 flex justify-around items-center">
-        {[
-          { tab: 'dashboard' as NavTab, label: 'Dashboard', icon: 'dashboard' },
-          { tab: 'matches' as NavTab, label: 'Partidos', icon: 'sports_soccer' },
-          { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
-          { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
-          { tab: 'profile' as NavTab, label: 'Perfil', icon: 'person' },
-        ].map((item) => {
+        {(
+          [
+            { tab: 'dashboard' as NavTab, label: 'Dashboard', icon: 'dashboard' },
+            { tab: 'matches' as NavTab, label: 'Partidos', icon: 'sports_soccer' },
+            { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
+            { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
+            { tab: 'profile' as NavTab, label: 'Perfil', icon: 'person' },
+          ] as const
+        )
+          .filter((item) => !(isHincha && (item.tab === 'dashboard' || item.tab === 'profile')))
+          .map((item) => {
           const isActive = activeTab === item.tab;
           return (
             <button

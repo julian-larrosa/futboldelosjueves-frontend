@@ -1,12 +1,21 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { authApi, clearToken, getToken, onUnauthorized, setToken } from '../api';
-import type { AuthResponse, PlayerResponse, RegisterRequest, UserResponse } from '../api';
+import { authApi, clearAllTokens, getToken, onUnauthorized, setRefreshToken, setToken } from '../api';
+import type {
+  AuthResponse,
+  ChangePasswordRequest,
+  ForgotPasswordRequest,
+  PlayerResponse,
+  RegisterHinchaRequest,
+  RegisterRequest,
+  UserResponse,
+} from '../api';
 
 const SESSION_STORAGE_KEY = 'fdlj.session';
 
 interface StoredSession {
   user: UserResponse;
-  player: PlayerResponse;
+  player: PlayerResponse | null;
+  mustChangePassword: boolean;
 }
 
 interface AuthContextValue {
@@ -15,8 +24,14 @@ interface AuthContextValue {
   token: string | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (email: string, password: string) => Promise<void>;
+  isHincha: boolean;
+  mustChangePassword: boolean;
+  login: (email: string, password: string) => Promise<AuthResponse>;
   register: (request: RegisterRequest) => Promise<void>;
+  registerHincha: (request: RegisterHinchaRequest) => Promise<void>;
+  forgotPassword: (request: ForgotPasswordRequest) => Promise<void>;
+  changeMyPassword: (request: ChangePasswordRequest) => Promise<void>;
+  completePasswordChange: () => void;
   logout: () => void;
 }
 
@@ -36,10 +51,14 @@ function loadStoredSession(): StoredSession | null {
     if (
       candidate.user &&
       typeof candidate.user === 'object' &&
-      candidate.player &&
-      typeof candidate.player === 'object'
+      (candidate.player === null ||
+        (candidate.player && typeof candidate.player === 'object'))
     ) {
-      return parsed as StoredSession;
+      return {
+        user: candidate.user,
+        player: candidate.player ?? null,
+        mustChangePassword: candidate.mustChangePassword === true,
+      };
     }
     return null;
   } catch {
@@ -64,7 +83,19 @@ function clearStoredSession(): void {
 }
 
 function toStoredSession(response: AuthResponse): StoredSession {
-  return { user: response.user, player: response.player };
+  return {
+    user: response.user,
+    player: response.player ?? null,
+    mustChangePassword: response.mustChangePassword === true,
+  };
+}
+
+function handleAuthResponse(response: AuthResponse): void {
+  setToken(response.token);
+  if (response.refreshToken) {
+    setRefreshToken(response.refreshToken);
+  }
+  persistSession(toStoredSession(response));
 }
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -72,7 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [session, setSession] = useState<StoredSession | null>(() => loadStoredSession());
 
   const logout = useCallback(() => {
-    clearToken();
+    clearAllTokens();
     clearStoredSession();
     setTokenState(null);
     setSession(null);
@@ -83,20 +114,57 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return unsubscribe;
   }, [logout]);
 
-  const login = useCallback(async (email: string, password: string): Promise<void> => {
-    const response = await authApi.login({ email, password });
-    setToken(response.token);
-    persistSession(toStoredSession(response));
+  const applyAuthResponse = useCallback((response: AuthResponse): void => {
+    handleAuthResponse(response);
     setTokenState(response.token);
     setSession(toStoredSession(response));
   }, []);
 
-  const register = useCallback(async (request: RegisterRequest): Promise<void> => {
-    const response = await authApi.register(request);
-    setToken(response.token);
-    persistSession(toStoredSession(response));
-    setTokenState(response.token);
-    setSession(toStoredSession(response));
+  const login = useCallback(
+    async (email: string, password: string): Promise<AuthResponse> => {
+      const response = await authApi.login({ email, password });
+      applyAuthResponse(response);
+      return response;
+    },
+    [applyAuthResponse],
+  );
+
+  const register = useCallback(
+    async (request: RegisterRequest): Promise<void> => {
+      const response = await authApi.register(request);
+      applyAuthResponse(response);
+    },
+    [applyAuthResponse],
+  );
+
+  const registerHincha = useCallback(
+    async (request: RegisterHinchaRequest): Promise<void> => {
+      const response = await authApi.registerHincha(request);
+      applyAuthResponse(response);
+    },
+    [applyAuthResponse],
+  );
+
+  const forgotPassword = useCallback(
+    async (request: ForgotPasswordRequest): Promise<void> => {
+      await authApi.forgotPassword(request);
+    },
+    [],
+  );
+
+  const changeMyPassword = useCallback(async (request: ChangePasswordRequest): Promise<void> => {
+    await authApi.changeMyPassword(request);
+  }, []);
+
+  const completePasswordChange = useCallback((): void => {
+    setSession((prev) => {
+      if (!prev) {
+        return prev;
+      }
+      const updated: StoredSession = { ...prev, mustChangePassword: false };
+      persistSession(updated);
+      return updated;
+    });
   }, []);
 
   const value = useMemo<AuthContextValue>(() => {
@@ -107,11 +175,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       token,
       isAuthenticated,
       isAdmin: session?.user.role === 'ADMIN',
+      isHincha: isAuthenticated && session?.player == null,
+      mustChangePassword: session?.mustChangePassword === true,
       login,
       register,
+      registerHincha,
+      forgotPassword,
+      changeMyPassword,
+      completePasswordChange,
       logout,
     };
-  }, [token, session, login, register, logout]);
+  }, [token, session, login, register, registerHincha, forgotPassword, changeMyPassword, completePasswordChange, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };
