@@ -56,3 +56,8 @@ export interface ResetPasswordRequest {
   email: string
   newPassword: string
 }
+
+export interface ForgotPasswordRequest {
+  email: string
+  newPassword: string
+}

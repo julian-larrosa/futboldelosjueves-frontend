@@ -30,9 +30,9 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setServerError(null)
     try {
-      await login(data)
+      const response = await login(data)
       toast.success('Sesión iniciada correctamente')
-      navigate(from, { replace: true })
+      navigate(response.mustChangePassword ? '/change-password' : from, { replace: true })
     } catch (error) {
       setServerError(getErrorMessage(error, 'No se pudo iniciar sesión'))
     }
@@ -77,6 +77,12 @@ export default function LoginPage() {
           Ingresar
         </Button>
       </form>
+
+      <p className="mt-4 text-center text-sm text-muted-foreground">
+        <Link to="/forgot-password" className="font-medium text-primary hover:underline">
+          ¿Olvidaste tu contraseña?
+        </Link>
+      </p>
 
       <div className="mt-6 space-y-2 text-center text-sm text-muted-foreground">
         <p>

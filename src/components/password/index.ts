@@ -1,2 +1,2 @@
 export { ChangePasswordModal } from './ChangePasswordModal'
-export { ForcedPasswordChange } from './ForcedPasswordChange'
+export { ChangePasswordForm } from './ChangePasswordForm'

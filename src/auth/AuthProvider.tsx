@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     async (data: LoginRequest) => {
       const response = await authApi.login(data)
       persistSession(response.token, response.user, response.mustChangePassword)
+      return response
     },
     [persistSession],
   )
