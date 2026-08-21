@@ -9,11 +9,15 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, roles }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuth()
+  const { user, isAuthenticated, mustChangePassword } = useAuth()
   const location = useLocation()
 
   if (!isAuthenticated) {
     return <Navigate to="/login" state={{ from: location.pathname }} replace />
+  }
+
+  if (mustChangePassword) {
+    return <Navigate to="/change-password" replace />
   }
 
   if (roles && user && !roles.includes(user.role)) {

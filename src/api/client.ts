@@ -14,6 +14,7 @@ apiClient.interceptors.request.use((config) => {
   const token = getToken()
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
+    ;(config as { _fdljToken?: string })._fdljToken = token
   }
   return config
 })
@@ -28,8 +29,14 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error: AxiosError) => {
     if (error.response?.status === 401) {
-      clearToken()
-      sessionExpiredHandler?.()
+      const usedToken = (error.config as { _fdljToken?: string } | undefined)?._fdljToken
+      // Solo invalidamos la sesión si el token que falló es el mismo que sigue guardado.
+      // Evita que un request con un token viejo (otra pestaña o estado stale) borre
+      // una sesión más nueva recién creada, lo que causaba loop login -> dashboard -> login.
+      if (usedToken && getToken() === usedToken) {
+        clearToken()
+        sessionExpiredHandler?.()
+      }
     }
     return Promise.reject(error)
   },

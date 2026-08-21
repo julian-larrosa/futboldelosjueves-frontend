@@ -1,19 +1,26 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'sonner'
+import { MustChangePasswordRoute } from '@/auth/MustChangePasswordRoute'
 import { ProtectedRoute } from '@/auth/ProtectedRoute'
 import { PublicOnlyRoute } from '@/auth/PublicOnlyRoute'
 import { useAuth } from '@/auth/useAuth'
 import { AppShell } from '@/components/layout'
-import { LoginPage, RegisterHinchaPage, RegisterPage } from '@/features/auth'
+import {
+  ForgotPasswordPage,
+  ForcedPasswordChangePage,
+  LoginPage,
+  RegisterHinchaPage,
+  RegisterPage,
+} from '@/features/auth'
 import { DashboardPage } from '@/features/dashboard'
 import { HinchasPage } from '@/features/hinchas'
 import { PlaceholderPage } from '@/features/placeholder'
-import { ForcedPasswordChange } from '@/components/password'
 import { Role } from '@/types'
 
 function HomeRedirect() {
-  const { user } = useAuth()
+  const { user, mustChangePassword } = useAuth()
   if (!user) return <Navigate to="/login" replace />
+  if (mustChangePassword) return <Navigate to="/change-password" replace />
   return <Navigate to="/dashboard" replace />
 }
 
@@ -21,7 +28,6 @@ export default function App() {
   return (
     <BrowserRouter>
       <Toaster richColors position="top-right" theme="dark" />
-      <ForcedPasswordChange />
       <Routes>
         <Route path="/" element={<HomeRedirect />} />
 
@@ -47,6 +53,23 @@ export default function App() {
             <PublicOnlyRoute>
               <RegisterHinchaPage />
             </PublicOnlyRoute>
+          }
+        />
+        <Route
+          path="/forgot-password"
+          element={
+            <PublicOnlyRoute>
+              <ForgotPasswordPage />
+            </PublicOnlyRoute>
+          }
+        />
+
+        <Route
+          path="/change-password"
+          element={
+            <MustChangePasswordRoute>
+              <ForcedPasswordChangePage />
+            </MustChangePasswordRoute>
           }
         />
 

@@ -7,10 +7,10 @@ interface PublicOnlyRouteProps {
 }
 
 export function PublicOnlyRoute({ children }: PublicOnlyRouteProps) {
-  const { isAuthenticated } = useAuth()
+  const { isAuthenticated, mustChangePassword } = useAuth()
 
   if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
+    return <Navigate to={mustChangePassword ? '/change-password' : '/dashboard'} replace />
   }
 
   return <>{children}</>

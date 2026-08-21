@@ -2,6 +2,7 @@ import { apiClient } from './client'
 import type {
   ApiResponse,
   AuthResponse,
+  ForgotPasswordRequest,
   LoginRequest,
   RegisterHinchaRequest,
   RegisterRequest,
@@ -20,4 +21,8 @@ export async function register(data: RegisterRequest): Promise<AuthResponse> {
 export async function registerHincha(data: RegisterHinchaRequest): Promise<AuthResponse> {
   const res = await apiClient.post<ApiResponse<AuthResponse>>('/api/auth/register-hincha', data)
   return res.data.data
+}
+
+export async function forgotPassword(data: ForgotPasswordRequest): Promise<void> {
+  await apiClient.post('/api/auth/password/forgot', data)
 }

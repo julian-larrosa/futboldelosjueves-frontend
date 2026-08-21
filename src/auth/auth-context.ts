@@ -1,5 +1,5 @@
 import { createContext } from 'react'
-import type { LoginRequest, RegisterHinchaRequest, RegisterRequest, Role, UserResponse } from '@/types'
+import type { AuthResponse, LoginRequest, RegisterHinchaRequest, RegisterRequest, Role, UserResponse } from '@/types'
 
 export interface AuthContextValue {
   user: UserResponse | null
@@ -7,7 +7,7 @@ export interface AuthContextValue {
   isAuthenticated: boolean
   mustChangePassword: boolean
   hasRole: (role: Role) => boolean
-  login: (data: LoginRequest) => Promise<void>
+  login: (data: LoginRequest) => Promise<AuthResponse>
   register: (data: RegisterRequest) => Promise<void>
   registerHincha: (data: RegisterHinchaRequest) => Promise<void>
   completePasswordChange: () => void

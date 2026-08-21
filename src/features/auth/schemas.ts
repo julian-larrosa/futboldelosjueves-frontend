@@ -26,6 +26,18 @@ export const registerHinchaSchema = z.object({
   password: z.string().min(8, 'Mínimo 8 caracteres').max(72, 'Máximo 72 caracteres'),
 })
 
+export const forgotPasswordSchema = z
+  .object({
+    email: z.string().trim().min(1, 'El email es obligatorio').email('Ingresá un email válido').max(100, 'Máximo 100 caracteres'),
+    newPassword: z.string().min(8, 'Mínimo 8 caracteres').max(72, 'Máximo 72 caracteres'),
+    confirmPassword: z.string().min(1, 'Repetí la nueva contraseña'),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Las contraseñas no coinciden',
+  })
+
 export type LoginForm = z.infer<typeof loginSchema>
 export type RegisterForm = z.infer<typeof registerSchema>
 export type RegisterHinchaForm = z.infer<typeof registerHinchaSchema>
+export type ForgotPasswordForm = z.infer<typeof forgotPasswordSchema>
