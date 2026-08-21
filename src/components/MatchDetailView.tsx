@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   MatchStatus,
   matchesApi,
@@ -10,11 +10,13 @@ import {
 } from '../api';
 import { useApi } from '../hooks/useApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { ConvocatoriaSection } from './ConvocatoriaSection';
 import { formatMatchDate, formatMatchTime, formatShortDate, getInitials } from '../utils/format';
 
 interface MatchDetailViewProps {
   matchId: number;
   isAdmin: boolean;
+  isHincha?: boolean;
   onSelectMatch: (matchId: string) => void;
   onSelectPlayer: (playerId: string) => void;
   onOpenEditModal: () => void;
@@ -37,21 +39,35 @@ function sideLabel(side: TeamSide | null): 'A' | 'B' {
 export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   matchId,
   isAdmin,
+  isHincha = false,
   onSelectMatch,
   onSelectPlayer,
   onOpenEditModal,
   onOpenRateModal,
 }) => {
   const [selectedTeamSide, setSelectedTeamSide] = useState<TeamSide>('EQUIPO_A');
+  const [generatingTeams, setGeneratingTeams] = useState(false);
 
   const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
   const matchQuery = useApi(matchFetcher);
 
-  const allMatchesFetcher = React.useCallback(() => matchesApi.list({ size: 200 }), []);
+  const allMatchesFetcher = React.useCallback(() => matchesApi.list({ size: 100 }), []);
   const allMatchesQuery = useApi(allMatchesFetcher);
 
   const teamsFetcher = React.useCallback(() => teamsApi.list(matchId), [matchId]);
   const teamsQuery = useApi(teamsFetcher);
+
+  const handleGenerateTeams = useCallback(async () => {
+    setGeneratingTeams(true);
+    try {
+      await teamsApi.generate(matchId);
+      teamsQuery.refetch();
+    } catch {
+      // Error handled silently
+    } finally {
+      setGeneratingTeams(false);
+    }
+  }, [matchId, teamsQuery]);
 
   const statsFetcher = React.useCallback(
     () => statisticsApi.getMatchStatistics(matchId),
@@ -59,11 +75,11 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   );
   const statsQuery = useApi(statsFetcher);
 
-  const ratingsFetcher = React.useCallback(() => ratingsApi.list(matchId, { size: 200 }), [matchId]);
+  const ratingsFetcher = React.useCallback(() => ratingsApi.list(matchId, { size: 100 }), [matchId]);
   const ratingsQuery = useApi(ratingsFetcher);
 
   const participationsFetcher = React.useCallback(
-    () => participationsApi.list(matchId, { size: 200 }),
+    () => participationsApi.list(matchId, { size: 100 }),
     [matchId],
   );
   const participationsQuery = useApi(participationsFetcher);
@@ -216,6 +232,16 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
         </div>
       </div>
 
+      {/* CONVOCATORIA SECTION */}
+      {match.estado !== 'FINALIZADO' && match.estado !== 'CANCELADO' && (
+        <ConvocatoriaSection
+          match={match}
+          isAdmin={isAdmin}
+          onSelectPlayer={onSelectPlayer}
+          onRefresh={matchQuery.refetch}
+        />
+      )}
+
       {/* BENTO GRID LAYOUT */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* GOLEADORES SECTION */}
@@ -269,7 +295,23 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               <span>Alineaciones</span>
             </h3>
 
-            {/* Team A / Team B Tab Switcher */}
+            <div className="flex items-center gap-2">
+              {isAdmin && teams.length === 0 && match.estado !== 'FINALIZADO' && match.estado !== 'CANCELADO' && (
+                <button
+                  onClick={handleGenerateTeams}
+                  disabled={generatingTeams}
+                  className="bg-[#7B8B6F] text-white px-3 py-1.5 rounded-lg font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-1.5 disabled:opacity-60"
+                >
+                  {generatingTeams ? (
+                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                  ) : (
+                    <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
+                  )}
+                  <span>Generar Equipos</span>
+                </button>
+              )}
+
+              {/* Team A / Team B Tab Switcher */}
             <div className="flex bg-[#F1EFE7] rounded-xl p-1 border border-[#EBE7DF]">
               <button
                 onClick={() => setSelectedTeamSide('EQUIPO_A')}
@@ -291,6 +333,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               >
                 Equipo B
               </button>
+            </div>
             </div>
           </div>
 
@@ -329,13 +372,15 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
             </h3>
 
             {/* Calificar compañeros Button */}
-            <button
-              onClick={onOpenRateModal}
-              className="bg-[#5A5A40] text-white px-5 py-2.5 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
-            >
-              <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
-              <span>Calificar compañeros</span>
-            </button>
+            {!isHincha && (
+              <button
+                onClick={onOpenRateModal}
+                className="bg-[#5A5A40] text-white px-5 py-2.5 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+              >
+                <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
+                <span>Calificar compañeros</span>
+              </button>
+            )}
           </div>
 
           {/* Ratings Table */}
