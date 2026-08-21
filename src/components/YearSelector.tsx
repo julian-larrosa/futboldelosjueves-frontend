@@ -19,7 +19,7 @@ function extractYears(fechaHoras: string[]): number[] {
 }
 
 export const YearSelector: React.FC<YearSelectorProps> = ({ value, onChange }) => {
-  const fetcher = React.useCallback(() => matchesApi.list({ size: 200 }), []);
+  const fetcher = React.useCallback(() => matchesApi.list({ size: 100 }), []);
   const { data } = useApi(fetcher);
 
   const years = extractYears((data?.content ?? []).map((m) => m.fechaHora));

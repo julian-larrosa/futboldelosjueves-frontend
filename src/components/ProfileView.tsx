@@ -1,10 +1,13 @@
-import React, { useState } from 'react';
-import { playersApi, statisticsApi, toPlayer, toPlayerStatistics } from '../api';
+import React, { useMemo, useState } from 'react';
+import { attributesApi, hasOfficialAttributes, matchesApi, playersApi, statisticsApi, toPlayer, toPlayerStatistics } from '../api';
 import { useApi } from '../hooks/useApi';
-import { RadarChart } from './RadarChart';
+import { MonoRoundedRadarChart } from './charts/MonoRoundedRadarChart';
+import { MonoRoundedLineChart } from './charts/MonoRoundedLineChart';
 import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { EditProfileModal } from './EditProfileModal';
 import { getInitials } from '../utils/format';
+import { toRadarPoints, toRatingEvolutionLinePoints } from '../utils/charts';
 
 interface ProfileViewProps {
   playerId: number;
@@ -18,18 +21,30 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   onSelectPlayer,
 }) => {
   const [year, setYear] = useState<number | undefined>(undefined);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const isOwnProfile = playerId === currentPlayerId;
 
   const fetcher = React.useCallback(async () => {
     const params = year ? { year } : {};
-    const [player, players, stats] = await Promise.all([
+    const [player, players, stats, matches, history] = await Promise.all([
       playersApi.get(playerId),
-      playersApi.list({ size: 200 }),
+      playersApi.list({ size: 100 }),
       statisticsApi.getPlayerStatistics(playerId, params),
+      matchesApi.list({ size: 100 }),
+      attributesApi.getPlayerAttributeHistory(playerId).catch(() => null),
     ]);
-    return { player, players: players.content, stats };
+    return { player, players: players.content, stats, matches: matches.content, history };
   }, [playerId, year]);
 
   const { data, loading, error, refetch } = useApi(fetcher);
+
+  const lineData = useMemo(
+    () =>
+      data && data.history && data.matches
+        ? toRatingEvolutionLinePoints(data.history, data.matches, year)
+        : [],
+    [data, year],
+  );
 
   if (loading) {
     return <LoadingState label="Cargando perfil..." />;
@@ -109,6 +124,16 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
             {ui.ovr.toFixed(1)}
           </span>
         </div>
+
+        {isOwnProfile && (
+          <button
+            onClick={() => setIsEditModalOpen(true)}
+            className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
+          >
+            <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">edit</span>
+            <span>Editar Perfil</span>
+          </button>
+        )}
       </section>
 
       {/* SECCIÓN 'ATRIBUTOS OFICIALES' */}
@@ -122,7 +147,29 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </span>
         </div>
 
-        <RadarChart attributes={ui.attributes} />
+        {hasOfficialAttributes(player) ? (
+          <MonoRoundedRadarChart data={toRadarPoints(ui.attributes)} height={220} />
+        ) : (
+          <EmptyState message="Sin valoraciones oficiales." />
+        )}
+      </section>
+
+      {/* SECCIÓN 'EVOLUCIÓN DE VALORACIONES' */}
+      <section className="bg-white rounded-[28px] card-shadow p-6 md:p-8 border border-[#EBE7DF]">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-serif text-lg md:text-xl font-bold text-[#5A5A40]">
+            Evolución de Valoraciones
+          </h2>
+          <span className="text-[11px] font-mono text-[#8D8D7E] font-semibold bg-[#F1EFE7] px-3 py-1 rounded-full border border-[#EBE7DF]">
+            {year ? `Temporada ${year}` : 'Histórico'}
+          </span>
+        </div>
+
+        {lineData.length >= 2 ? (
+          <MonoRoundedLineChart data={lineData} height={220} />
+        ) : (
+          <EmptyState message="Sin historial suficiente de valoraciones para graficar." />
+        )}
       </section>
 
       {/* SECCIÓN 'RENDIMIENTO' */}
@@ -256,6 +303,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </h2>
         <EmptyState message="No hay historial de partidos individuales disponible para este jugador." />
       </section>
+
+      {isOwnProfile && (
+        <EditProfileModal
+          isOpen={isEditModalOpen}
+          onClose={() => setIsEditModalOpen(false)}
+          player={player}
+          onUpdated={refetch}
+        />
+      )}
     </div>
   );
 };

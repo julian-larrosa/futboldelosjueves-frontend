@@ -2,6 +2,9 @@ import type { Match, Player, PlayerAttributes } from '../types';
 import type { AttributeType, MatchStatus, PlayerPosition } from './enums';
 import type { MatchResponse, PlayerResponse, PlayerStatisticsResponse, RecentFormResponse } from './types';
 
+export const DEFAULT_TEAM_A_NAME = 'Equipo A';
+export const DEFAULT_TEAM_B_NAME = 'Equipo B';
+
 const ATTRIBUTE_KEY_BY_TYPE: Record<AttributeType, keyof PlayerAttributes> = {
   TECNICA: 'tecnica',
   FISICO: 'fisico',
@@ -52,9 +55,13 @@ function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
 
+export function hasOfficialAttributes(player: PlayerResponse): boolean {
+  return player.attributes !== null && player.attributes.attributes.length > 0;
+}
+
 export function toPlayer(player: PlayerResponse): Player {
   const attributes: PlayerAttributes = { definicion: 0, pase: 0, tecnica: 0, mentalidad: 0, fisico: 0 };
-  for (const attribute of player.attributes.attributes) {
+  for (const attribute of player.attributes?.attributes ?? []) {
     attributes[mapAttributeTypeToKey(attribute.attributeType)] = attribute.currentValue;
   }
   const ovr = roundToOneDecimal(average(Object.values(attributes)));
@@ -105,12 +112,12 @@ export function toMatch(match: MatchResponse): Match {
     location: match.lugar ?? '',
     status: mapMatchStatus(match.estado),
     teamA: {
-      name: 'Equipo A',
+      name: DEFAULT_TEAM_A_NAME,
       color: '',
       score: hasScore ? match.golesEquipoA ?? 0 : undefined,
     },
     teamB: {
-      name: 'Equipo B',
+      name: DEFAULT_TEAM_B_NAME,
       color: '',
       score: hasScore ? match.golesEquipoB ?? 0 : undefined,
     },

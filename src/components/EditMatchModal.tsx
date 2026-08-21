@@ -32,7 +32,7 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({ isOpen, onClose,
   const matchQuery = useApi(matchFetcher);
 
   const participationsFetcher = React.useCallback(
-    () => participationsApi.list(matchId, { size: 200 }),
+    () => participationsApi.list(matchId, { size: 100 }),
     [matchId],
   );
   const participationsQuery = useApi(participationsFetcher);

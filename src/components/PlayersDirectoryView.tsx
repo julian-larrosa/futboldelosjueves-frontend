@@ -17,7 +17,7 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
   const [selectedPosition, setSelectedPosition] = useState<string>('TODOS');
 
   const fetcher = React.useCallback(async () => {
-    const players = await playersApi.list({ size: 200 });
+    const players = await playersApi.list({ size: 100 });
     const standings = await statisticsApi.getStandings();
     const standingsById = new Map(standings.map((s) => [s.playerId, s]));
     return { players: players.content, total: players.totalElements, standingsById };

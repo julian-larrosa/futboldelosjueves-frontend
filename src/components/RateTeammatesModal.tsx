@@ -18,7 +18,7 @@ export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
   currentPlayerId,
 }) => {
   const participationsFetcher = React.useCallback(
-    () => participationsApi.list(matchId, { size: 200 }),
+    () => participationsApi.list(matchId, { size: 100 }),
     [matchId],
   );
   const participationsQuery = useApi(participationsFetcher);

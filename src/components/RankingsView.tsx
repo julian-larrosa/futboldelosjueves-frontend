@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { matchesApi, playersApi, statisticsApi, mapPlayerPosition } from '../api';
 import { useApi } from '../hooks/useApi';
+import { MonoRoundedBarChart, BarPoint } from './charts/MonoRoundedBarChart';
 import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
-import { getFirstNameInitials, getInitials } from '../utils/format';
+import { getInitials } from '../utils/format';
+import { toTopScorerBarPoints } from '../utils/charts';
 
 interface RankingsViewProps {
   onSelectPlayer: (playerId: string) => void;
@@ -46,8 +48,8 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
       statisticsApi.getStandings(params),
       statisticsApi.getTopScorers(params),
       statisticsApi.getRatingRanking(params),
-      playersApi.list({ size: 200 }),
-      matchesApi.list({ size: 200 }),
+      playersApi.list({ size: 100 }),
+      matchesApi.list({ size: 100 }),
     ]);
 
     const playerIds = new Set<number>([
@@ -118,6 +120,17 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
     return [...byId.values()];
   }, [data]);
 
+  const topScorerData = useMemo<BarPoint[]>(
+    () => (data ? toTopScorerBarPoints(data.topScorers) : []),
+    [data],
+  );
+
+  const handleScorerBarClick = (entry: BarPoint) => {
+    if (entry.playerId !== undefined) {
+      onSelectPlayer(String(entry.playerId));
+    }
+  };
+
   if (loading) {
     return <LoadingState label="Cargando estadísticas..." />;
   }
@@ -141,9 +154,6 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
   });
 
   const displayList = expandedView ? filteredPlayers : filteredPlayers.slice(0, 6);
-
-  const topScorers = [...rows].sort((a, b) => b.goals - a.goals).slice(0, 4);
-  const maxGoals = Math.max(...topScorers.map((p) => p.goals), 1);
 
   const seasonMatches = data
     ? data.matches.filter(
@@ -383,46 +393,12 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
               Top Goleadores
             </h3>
 
-            {topScorers.length > 0 ? (
-              <div className="flex flex-col gap-4">
-                {topScorers.map((scorer, idx) => {
-                  const percentage = Math.min(100, Math.round((scorer.goals / maxGoals) * 100));
-                  const isLeader = idx === 0;
-
-                  return (
-                    <div
-                      key={scorer.playerId}
-                      onClick={() => onSelectPlayer(String(scorer.playerId))}
-                      className="cursor-pointer group"
-                    >
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-semibold text-[#4A4A3F] group-hover:text-[#5A5A40] transition-colors">
-                          {getFirstNameInitials(scorer.name)}
-                        </span>
-                        <span
-                          className={`font-mono font-bold ${
-                            isLeader ? 'text-[#7B8B6F]' : 'text-[#8D8D7E]'
-                          }`}
-                        >
-                          {scorer.goals}
-                        </span>
-                      </div>
-                      <div className="w-full h-2.5 bg-[#F1EFE7] rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-1000 ease-out ${
-                            isLeader
-                              ? 'bg-[#5A5A40]'
-                              : idx === 1
-                              ? 'bg-[#7B8B6F]'
-                              : 'bg-[#D2B48C]'
-                          }`}
-                          style={{ width: `${percentage}%` }}
-                        ></div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+            {topScorerData.length > 0 ? (
+              <MonoRoundedBarChart
+                data={topScorerData}
+                height={240}
+                onBarClick={handleScorerBarClick}
+              />
             ) : (
               <EmptyState message="No hay goleadores registrados." />
             )}

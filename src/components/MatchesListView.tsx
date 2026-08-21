@@ -1,21 +1,18 @@
-import React, { useState } from 'react';
-import { MatchResponse, MatchStatus, matchesApi } from '../api';
-import { useApi } from '../hooks/useApi';
+import React, { useCallback, useState } from 'react';
+import { MatchStatus, matchesApi } from '../api';
+import type { MatchResponse } from '../api';
+import { usePaginatedApi } from '../hooks/usePaginatedApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { PaginationControls } from './PaginationControls';
 import { formatMatchDate, formatMatchTime } from '../utils/format';
 
 interface MatchesListViewProps {
   onSelectMatch: (matchId: string) => void;
+  isAdmin?: boolean;
+  onCreateMatch?: () => void;
 }
 
 type FilterType = 'ALL' | 'UPCOMING' | 'FINISHED';
-
-const UPCOMING_STATUSES: MatchStatus[] = [
-  'PROGRAMADO',
-  'CONVOCATORIA_ABIERTA',
-  'CONVOCATORIA_CERRADA',
-  'EN_CURSO',
-];
 
 const STATUS_LABEL: Record<MatchStatus, string> = {
   PROGRAMADO: 'Programado',
@@ -26,27 +23,41 @@ const STATUS_LABEL: Record<MatchStatus, string> = {
   CANCELADO: 'Cancelado',
 };
 
-export const MatchesListView: React.FC<MatchesListViewProps> = ({ onSelectMatch }) => {
+function filterToStatus(filter: FilterType): MatchStatus | undefined {
+  if (filter === 'UPCOMING') return 'PROGRAMADO';
+  if (filter === 'FINISHED') return 'FINALIZADO';
+  return undefined;
+}
+
+export const MatchesListView: React.FC<MatchesListViewProps> = ({
+  onSelectMatch,
+  isAdmin,
+  onCreateMatch,
+}) => {
   const [filter, setFilter] = useState<FilterType>('ALL');
 
-  const fetcher = React.useCallback(() => matchesApi.list({ size: 200 }), []);
-  const { data, loading, error, refetch } = useApi(fetcher);
+  const fetcher = useCallback(
+    (page: number, size: number) =>
+      matchesApi.list({
+        page,
+        size,
+        sort: 'fechaHora:desc',
+        estado: filterToStatus(filter),
+      }),
+    [filter],
+  );
 
-  if (loading) {
+  const paginated = usePaginatedApi<MatchResponse>(fetcher, 10);
+
+  if (paginated.loading) {
     return <LoadingState label="Cargando partidos..." />;
   }
 
-  if (error) {
-    return <ErrorState message={error} onRetry={refetch} />;
+  if (paginated.error) {
+    return <ErrorState message={paginated.error} onRetry={paginated.refetch} />;
   }
 
-  const matches = data?.content ?? [];
-
-  const filteredMatches = matches.filter((m) => {
-    if (filter === 'UPCOMING') return UPCOMING_STATUSES.includes(m.estado);
-    if (filter === 'FINISHED') return m.estado === 'FINALIZADO';
-    return true;
-  });
+  const matches = paginated.data ?? [];
 
   const hasScore = (m: MatchResponse) => m.golesEquipoA !== null && m.golesEquipoB !== null;
 
@@ -59,32 +70,44 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({ onSelectMatch 
             Calendario de Partidos
           </h1>
           <p className="font-body text-[#8D8D7E] text-sm mt-0.5">
-            {matches.length} partidos registrados en la liga
+            {paginated.totalElements} partidos registrados en la liga
           </p>
         </div>
 
-        {/* Filter Pills */}
-        <div className="flex bg-white p-1 rounded-2xl border border-[#EBE7DF] card-shadow">
-          {(['ALL', 'UPCOMING', 'FINISHED'] as const).map((tab) => (
+        <div className="flex items-center gap-3">
+          {isAdmin && onCreateMatch && (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
-                filter === tab
-                  ? 'bg-[#5A5A40] text-white shadow-xs'
-                  : 'text-[#8D8D7E] hover:text-[#5A5A40]'
-              }`}
+              onClick={onCreateMatch}
+              className="bg-[#5A5A40] text-white px-4 py-2 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-xs active:scale-95"
             >
-              {tab === 'ALL' ? 'Todos' : tab === 'UPCOMING' ? 'Próximos' : 'Finalizados'}
+              <span className="material-symbols-outlined text-[16px]">add_circle</span>
+              <span>Crear Partido</span>
             </button>
-          ))}
+          )}
+
+          {/* Filter Pills */}
+          <div className="flex bg-white p-1 rounded-2xl border border-[#EBE7DF] card-shadow">
+            {(['ALL', 'UPCOMING', 'FINISHED'] as const).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                  filter === tab
+                    ? 'bg-[#5A5A40] text-white shadow-xs'
+                    : 'text-[#8D8D7E] hover:text-[#5A5A40]'
+                }`}
+              >
+                {tab === 'ALL' ? 'Todos' : tab === 'UPCOMING' ? 'Proximos' : 'Finalizados'}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
       {/* Matches List */}
-      {filteredMatches.length > 0 ? (
+      {matches.length > 0 ? (
         <div className="space-y-4">
-          {filteredMatches.map((match) => (
+          {matches.map((match) => (
             <div
               key={match.id}
               onClick={() => onSelectMatch(String(match.id))}
@@ -94,7 +117,7 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({ onSelectMatch 
               <div className="flex justify-between items-center text-xs font-mono border-b border-[#EBE7DF] pb-3">
                 <div className="flex items-center gap-2 text-[#5A5A40] font-bold">
                   <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">calendar_today</span>
-                  <span>{formatMatchDate(match.fechaHora)} • {formatMatchTime(match.fechaHora)}</span>
+                  <span>{formatMatchDate(match.fechaHora)} {formatMatchTime(match.fechaHora)}</span>
                 </div>
                 <span
                   className={`px-3 py-0.5 rounded-full font-bold uppercase text-[10px] ${
@@ -151,12 +174,21 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({ onSelectMatch 
                 </span>
 
                 <span className="font-mono text-[11px] font-bold text-[#7B8B6F] flex items-center gap-1">
-                  <span>Ver Detalle & Stats</span>
+                  <span>Ver Detalle</span>
                   <span className="material-symbols-outlined text-[16px]">chevron_right</span>
                 </span>
               </div>
             </div>
           ))}
+
+          <PaginationControls
+            page={paginated.page}
+            totalPages={paginated.totalPages}
+            totalElements={paginated.totalElements}
+            hasNext={paginated.hasNext}
+            hasPrevious={paginated.hasPrevious}
+            onPageChange={paginated.goToPage}
+          />
         </div>
       ) : (
         <EmptyState message="No hay partidos que coincidan con el filtro seleccionado." />

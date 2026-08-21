@@ -41,7 +41,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const statsQuery = useApi(statsFetcher);
   const stats = statsQuery.data ? toPlayerStatistics(statsQuery.data) : null;
 
-  const matchesFetcher = React.useCallback(() => matchesApi.list({ size: 200 }), []);
+  const matchesFetcher = React.useCallback(() => matchesApi.list({ size: 100 }), []);
   const matchesQuery = useApi(matchesFetcher);
 
   if (matchesQuery.loading || statsQuery.loading) {

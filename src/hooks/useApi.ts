@@ -21,7 +21,7 @@ export function useApi<F extends () => Promise<unknown>>(
     setLoading(true);
     setError(null);
     fetcher()
-      .then((result) => {
+      .then((result: T) => {
         if (active) {
           setData(result);
         }

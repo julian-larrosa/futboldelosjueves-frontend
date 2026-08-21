@@ -3,7 +3,7 @@ export * from './types';
 
 export { ApiError } from './errors';
 export { API_BASE_URL } from './config';
-export { getToken, setToken, clearToken } from './token';
+export { getToken, setToken, clearToken, getRefreshToken, setRefreshToken, clearRefreshToken, clearAllTokens } from './token';
 export { http, onUnauthorized, request } from './client';
 export type { RequestOptions } from './client';
 
@@ -18,6 +18,9 @@ export { teamsApi } from './teamsApi';
 export { statisticsApi } from './statisticsApi';
 
 export {
+  DEFAULT_TEAM_A_NAME,
+  DEFAULT_TEAM_B_NAME,
+  hasOfficialAttributes,
   mapAttributeTypeToKey,
   mapMatchStatus,
   mapPlayerPosition,
