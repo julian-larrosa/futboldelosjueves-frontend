@@ -6,6 +6,7 @@ import type {
   LoginRequest,
   RegisterHinchaRequest,
   RegisterRequest,
+  ResetPasswordRequest,
 } from './types';
 
 export interface RefreshResponse {
@@ -28,6 +29,9 @@ export const authApi = {
 
   changeMyPassword: (request: ChangePasswordRequest): Promise<void> =>
     http.put<void>('/api/users/me/password', request),
+
+  resetPassword: (request: ResetPasswordRequest): Promise<void> =>
+    http.put<void>('/api/users/password/reset', request),
 
   refresh: (refreshToken: string): Promise<RefreshResponse> =>
     http.post<RefreshResponse>('/api/auth/refresh', { refreshToken }),

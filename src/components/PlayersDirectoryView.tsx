@@ -2,19 +2,23 @@ import React, { useState } from 'react';
 import { playersApi, statisticsApi, toPlayer } from '../api';
 import { useApi } from '../hooks/useApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { ResetPasswordModal } from './ResetPasswordModal';
 import { getInitials } from '../utils/format';
 
 interface PlayersDirectoryViewProps {
   onSelectPlayer: (playerId: string) => void;
   currentPlayerId: number;
+  isAdmin?: boolean;
 }
 
 export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
   onSelectPlayer,
   currentPlayerId,
+  isAdmin = false,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPosition, setSelectedPosition] = useState<string>('TODOS');
+  const [resetTargetEmail, setResetTargetEmail] = useState<string | null>(null);
 
   const fetcher = React.useCallback(async () => {
     const players = await playersApi.list({ size: 100 });
@@ -119,7 +123,6 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
                         </p>
                       </div>
                     </div>
-
                     {/* OVR Badge */}
                     <div className="bg-[#5A5A40] text-white px-2.5 py-1 rounded-full font-serif font-bold text-sm flex items-center gap-1 shadow-xs">
                       <span className="text-[9px] font-mono opacity-80">OVR</span>
@@ -157,9 +160,24 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
                 </div>
 
                 <div className="flex items-center justify-between pt-1">
-                  <span className="text-[11px] font-mono font-bold text-[#5A5A40] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
-                    {ui.position}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-mono font-bold text-[#5A5A40] bg-[#F1EFE7] px-2.5 py-0.5 rounded-full border border-[#EBE7DF]">
+                      {ui.position}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setResetTargetEmail(player.email);
+                        }}
+                        className="inline-flex items-center gap-1 text-[11px] font-mono font-bold text-[#8D8D7E] hover:text-[#C2623F] px-2 py-0.5 rounded-full hover:bg-[#FFEBE5] transition-all"
+                        title="Restablecer contraseña"
+                      >
+                        <span className="material-symbols-outlined text-[15px]">lock_reset</span>
+                        <span>Restablecer</span>
+                      </button>
+                    )}
+                  </div>
                   <span className="text-xs font-mono font-bold text-[#7B8B6F] flex items-center gap-1 hover:underline">
                     <span>Ver Atributos</span>
                     <span className="material-symbols-outlined text-[16px]">arrow_forward</span>
@@ -172,6 +190,12 @@ export const PlayersDirectoryView: React.FC<PlayersDirectoryViewProps> = ({
       ) : (
         <EmptyState message="No se encontraron jugadores con los filtros aplicados." />
       )}
+
+      <ResetPasswordModal
+        isOpen={resetTargetEmail !== null}
+        defaultEmail={resetTargetEmail ?? ''}
+        onClose={() => setResetTargetEmail(null)}
+      />
     </div>
   );
 };

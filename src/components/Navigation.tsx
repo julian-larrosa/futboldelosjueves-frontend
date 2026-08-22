@@ -13,6 +13,7 @@ interface NavigationProps {
   setActiveTab: (tab: NavTab) => void;
   currentUser: Player | null;
   fallbackName: string;
+  isAdmin: boolean;
   onLogout: () => void;
   onOpenNotifications: () => void;
   nextMatch?: NextMatchInfo | null;
@@ -23,6 +24,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   setActiveTab,
   currentUser,
   fallbackName,
+  isAdmin,
   onLogout,
   onOpenNotifications,
   nextMatch,
@@ -38,6 +40,7 @@ export const Navigation: React.FC<NavigationProps> = ({
       { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
       { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
       { tab: 'profile' as NavTab, label: 'Mi Perfil', icon: 'person' },
+      ...(isAdmin ? [{ tab: 'hinchas' as NavTab, label: 'Hinchas', icon: 'campaign' }] : []),
     ] as const
   ).filter((item) => !(isHincha && (item.tab === 'dashboard' || item.tab === 'profile')));
 
@@ -224,6 +227,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             { tab: 'players' as NavTab, label: 'Jugadores', icon: 'groups' },
             { tab: 'rankings' as NavTab, label: 'Rankings', icon: 'leaderboard' },
             { tab: 'profile' as NavTab, label: 'Perfil', icon: 'person' },
+            ...(isAdmin ? [{ tab: 'hinchas' as NavTab, label: 'Hinchas', icon: 'campaign' }] : []),
           ] as const
         )
           .filter((item) => !(isHincha && (item.tab === 'dashboard' || item.tab === 'profile')))

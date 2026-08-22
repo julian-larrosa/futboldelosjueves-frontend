@@ -6,6 +6,7 @@ import { MonoRoundedLineChart } from './charts/MonoRoundedLineChart';
 import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { EditProfileModal } from './EditProfileModal';
+import { ChangePasswordModal } from './ChangePasswordModal';
 import { getInitials } from '../utils/format';
 import { toRadarPoints, toRatingEvolutionLinePoints } from '../utils/charts';
 
@@ -22,6 +23,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 }) => {
   const [year, setYear] = useState<number | undefined>(undefined);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
   const isOwnProfile = playerId === currentPlayerId;
 
   const fetcher = React.useCallback(async () => {
@@ -126,13 +128,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {isOwnProfile && (
-          <button
-            onClick={() => setIsEditModalOpen(true)}
-            className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
-          >
-            <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">edit</span>
-            <span>Editar Perfil</span>
-          </button>
+          <>
+            <button
+              onClick={() => setIsEditModalOpen(true)}
+              className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">edit</span>
+              <span>Editar Perfil</span>
+            </button>
+            <button
+              onClick={() => setIsChangePasswordModalOpen(true)}
+              className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
+            >
+              <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">lock_reset</span>
+              <span>Cambiar contraseña</span>
+            </button>
+          </>
         )}
       </section>
 
@@ -310,6 +321,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           onClose={() => setIsEditModalOpen(false)}
           player={player}
           onUpdated={refetch}
+        />
+      )}
+
+      {isOwnProfile && (
+        <ChangePasswordModal
+          isOpen={isChangePasswordModalOpen}
+          onClose={() => setIsChangePasswordModalOpen(false)}
         />
       )}
     </div>

@@ -9,6 +9,7 @@ import { ProfileView } from './components/ProfileView';
 import { MatchDetailView } from './components/MatchDetailView';
 import { MatchesListView } from './components/MatchesListView';
 import { PlayersDirectoryView } from './components/PlayersDirectoryView';
+import { HinchasAdminView } from './components/HinchasAdminView';
 import { RateTeammatesModal } from './components/RateTeammatesModal';
 import { EditMatchModal } from './components/EditMatchModal';
 import { CreateMatchModal } from './components/CreateMatchModal';
@@ -98,7 +99,7 @@ export default function App() {
   };
 
   const handleTabChange = (tab: NavTab) => {
-    if (isHincha && tab === 'dashboard') {
+    if ((isHincha && tab === 'dashboard') || (tab === 'hinchas' && !isAdmin)) {
       return;
     }
     setActiveTab(tab);
@@ -131,6 +132,7 @@ export default function App() {
         setActiveTab={handleTabChange}
         currentUser={currentUser}
         fallbackName={user?.username || user?.email || 'Hincha'}
+        isAdmin={isAdmin}
         onLogout={handleLogout}
         onOpenNotifications={() => setIsNotificationsModalOpen(true)}
         nextMatch={nextMatch}
@@ -201,8 +203,11 @@ export default function App() {
           <PlayersDirectoryView
             onSelectPlayer={handleSelectPlayer}
             currentPlayerId={currentUserId}
+            isAdmin={isAdmin}
           />
         )}
+
+        {effectiveTab === 'hinchas' && isAdmin && <HinchasAdminView />}
       </main>
 
       {/* MODALS */}

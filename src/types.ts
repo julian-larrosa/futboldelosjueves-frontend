@@ -1,4 +1,4 @@
-export type NavTab = 'dashboard' | 'matches' | 'players' | 'rankings' | 'profile';
+export type NavTab = 'dashboard' | 'matches' | 'players' | 'rankings' | 'profile' | 'hinchas';
 
 export interface PlayerAttributes {
   definicion: number;

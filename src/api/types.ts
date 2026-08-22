@@ -215,6 +215,20 @@ export interface ChangePasswordRequest {
   newPassword: string;
 }
 
+export interface ResetPasswordRequest {
+  email: string;
+  newPassword: string;
+}
+
+export interface HinchaResponse {
+  id: number;
+  nombre: string;
+  apellido: string;
+  activo: boolean;
+  username: string;
+  email: string;
+}
+
 export interface PlayerRequest {
   nombre: string;
   apellido: string;

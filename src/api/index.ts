@@ -8,6 +8,7 @@ export { http, onUnauthorized, request } from './client';
 export type { RequestOptions } from './client';
 
 export { authApi } from './authApi';
+export { hinchasApi } from './hinchasApi';
 export { playersApi } from './playersApi';
 export { matchesApi } from './matchesApi';
 export { participationsApi } from './participationsApi';
