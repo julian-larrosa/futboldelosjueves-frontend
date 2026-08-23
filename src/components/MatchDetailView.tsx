@@ -1,5 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import {
+  ApiError,
   MatchStatus,
   matchesApi,
   participationsApi,
@@ -13,6 +14,7 @@ import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { ConvocatoriaSection } from './ConvocatoriaSection';
 import { AttributeRatingsModal } from './AttributeRatingsModal';
 import { MatchAttendanceAdminCard } from './MatchAttendanceAdminCard';
+import { TeamBuilder } from './TeamBuilder';
 import { formatMatchDate, formatMatchTime, formatShortDate, getInitials } from '../utils/format';
 
 interface MatchDetailViewProps {
@@ -49,6 +51,8 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
 }) => {
   const [selectedTeamSide, setSelectedTeamSide] = useState<TeamSide>('EQUIPO_A');
   const [generatingTeams, setGeneratingTeams] = useState(false);
+  const [teamError, setTeamError] = useState<string | null>(null);
+  const [isTeamBuilderOpen, setIsTeamBuilderOpen] = useState(false);
   const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
 
   const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
@@ -62,11 +66,15 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
 
   const handleGenerateTeams = useCallback(async () => {
     setGeneratingTeams(true);
+    setTeamError(null);
     try {
       await teamsApi.generate(matchId);
+      setIsTeamBuilderOpen(false);
       teamsQuery.refetch();
-    } catch {
-      // Error handled silently
+    } catch (err) {
+      setTeamError(
+        err instanceof ApiError ? err.message : 'No se pudieron generar los equipos.',
+      );
     } finally {
       setGeneratingTeams(false);
     }
@@ -115,6 +123,8 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   const scorers = matchStats.filter((p) => p.goles > 0);
   const hasScore = match.golesEquipoA !== null && match.golesEquipoB !== null;
   const isFinished = match.estado === 'FINALIZADO';
+  // El backend solo permite generar/asignar equipos con la convocatoria cerrada
+  const canManageTeams = isAdmin && match.estado === 'CONVOCATORIA_CERRADA';
   const playedPlayers = participations
     .filter((p) => p.jugoEfectivamente)
     .map((p) => ({ playerId: p.playerId, nombreCompleto: p.playerNombreCompleto }));
@@ -302,23 +312,51 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
             </h3>
 
             <div className="flex items-center gap-2">
-              {isAdmin && teams.length === 0 && match.estado !== 'FINALIZADO' && match.estado !== 'CANCELADO' && (
-                <button
-                  onClick={handleGenerateTeams}
-                  disabled={generatingTeams}
-                  className="bg-[#7B8B6F] text-white px-3 py-1.5 rounded-lg font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-1.5 disabled:opacity-60"
-                >
-                  {generatingTeams ? (
-                    <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
-                  )}
-                  <span>Generar Equipos</span>
-                </button>
+              {canManageTeams && (
+                <>
+                  <button
+                    onClick={handleGenerateTeams}
+                    disabled={generatingTeams}
+                    title="Balancea los convocados por rating automáticamente"
+                    className="bg-[#7B8B6F] text-white px-3 py-1.5 rounded-lg font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-1.5 disabled:opacity-60"
+                  >
+                    {generatingTeams ? (
+                      <span className="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <span className="material-symbols-outlined text-[14px]">auto_fix_high</span>
+                    )}
+                    <span>{teams.length > 0 ? 'Regenerar' : 'Generar equilibrados'}</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setTeamError(null);
+                      setIsTeamBuilderOpen((open) => !open);
+                    }}
+                    className={`px-3 py-1.5 rounded-lg font-mono text-xs font-bold transition-all flex items-center gap-1.5 border active:scale-95 ${
+                      isTeamBuilderOpen
+                        ? 'bg-[#5A5A40] text-white border-[#5A5A40]'
+                        : 'bg-white text-[#5A5A40] border-[#EBE7DF] hover:bg-[#F1EFE7]'
+                    }`}
+                  >
+                    <span className="material-symbols-outlined text-[14px]">
+                      {isTeamBuilderOpen ? 'close' : 'drag_pan'}
+                    </span>
+                    <span>{isTeamBuilderOpen ? 'Terminar edición' : 'Armar manualmente'}</span>
+                  </button>
+                </>
               )}
 
+              {isAdmin && !canManageTeams && teams.length === 0 &&
+                (match.estado === 'PROGRAMADO' || match.estado === 'CONVOCATORIA_ABIERTA') && (
+                  <span className="font-mono text-[11px] text-[#8D8D7E] bg-[#F1EFE7] border border-[#EBE7DF] px-3 py-1.5 rounded-lg">
+                    Cerrá la convocatoria para armar los equipos
+                  </span>
+                )}
+
               {/* Team A / Team B Tab Switcher */}
-            <div className="flex bg-[#F1EFE7] rounded-xl p-1 border border-[#EBE7DF]">
+              {!isTeamBuilderOpen && (
+                <div className="flex bg-[#F1EFE7] rounded-xl p-1 border border-[#EBE7DF]">
               <button
                 onClick={() => setSelectedTeamSide('EQUIPO_A')}
                 className={`px-4 py-1.5 rounded-lg font-mono text-xs font-bold transition-all ${
@@ -339,12 +377,28 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               >
                 Equipo B
               </button>
-            </div>
+              </div>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-            {currentLineup.length > 0 ? (
+          {teamError && (
+            <div className="mb-4 bg-[#FFEBE5] border border-[#D97B66]/30 text-[#C2623F] rounded-xl px-4 py-3 text-xs font-mono font-bold flex items-start gap-2">
+              <span className="material-symbols-outlined text-[16px] shrink-0">error</span>
+              <span>{teamError}</span>
+            </div>
+          )}
+
+          {isTeamBuilderOpen && canManageTeams ? (
+            <TeamBuilder
+              matchId={match.id}
+              participations={participations}
+              teams={teams}
+              onRefresh={teamsQuery.refetch}
+            />
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {currentLineup.length > 0 ? (
               currentLineup.map((member) => (
                 <div
                   key={member.playerId}
@@ -366,7 +420,8 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
                 Alineación no confirmada para {currentTeamName}.
               </div>
             )}
-          </div>
+            </div>
+          )}
         </div>
 
         {/* CALIFICACIONES OFICIALES SECTION */}
