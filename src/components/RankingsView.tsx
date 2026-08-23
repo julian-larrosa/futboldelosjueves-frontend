@@ -10,7 +10,7 @@ import { useApi } from '../hooks/useApi';
 import { MonoRoundedBarChart, BarPoint } from './charts/MonoRoundedBarChart';
 import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
-import { getInitials, mapFormaByRecentWins } from '../utils/format';
+import { getInitials, mapFormaByLastTwo } from '../utils/format';
 import type { Forma } from '../utils/format';
 import { toTopScorerBarPoints } from '../utils/charts';
 
@@ -65,7 +65,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
     const forms = await Promise.all(
       [...playerIds].map(async (playerId) => {
         try {
-          const form = await statisticsApi.getRecentForm(playerId);
+          const form = await statisticsApi.getRecentForm(playerId, { limit: 2 });
           return { playerId, ...form };
         } catch {
           return null;
@@ -110,7 +110,11 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
           points: 0,
           victorias: 0,
           empates: 0,
-          forma: mapFormaByRecentWins(form?.victorias ?? 0, form?.partidosJugados ?? 0),
+          forma: mapFormaByLastTwo(
+            form?.victorias ?? 0,
+            form?.empates ?? 0,
+            form?.partidosJugados ?? 0,
+          ),
         };
         byId.set(playerId, row);
       }
@@ -158,9 +162,12 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
   }
 
   const sortedPlayers = [...rows].sort((a, b) => {
+    const recentPoints = (p: Row) => p.victorias * 3 + p.empates;
     if (activeTab === 'PUNTOS') return b.points - a.points || b.victorias - a.victorias;
     if (activeTab === 'GOLEADORES') return b.goals - a.goals || b.matchesPlayed - a.matchesPlayed;
-    if (activeTab === 'ESTADO DE FORMA') return b.victorias - a.victorias || b.rating - a.rating;
+    if (activeTab === 'ESTADO DE FORMA') {
+      return recentPoints(b) - recentPoints(a) || b.rating - a.rating;
+    }
     return b.rating - a.rating;
   });
 

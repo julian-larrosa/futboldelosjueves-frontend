@@ -43,18 +43,20 @@ export function getFirstNameInitials(name: string): string {
 export type Forma = 'up' | 'down' | 'neutral';
 
 /**
- * Regla de estado de forma según victorias en los últimos 3 partidos:
- * 2-3 victorias → arriba, 1 victoria → horizontal, 0 victorias → abajo.
+ * Regla de estado de forma según puntos en los últimos 2 partidos
+ * (victoria = 3 pts, empate = 1 pt):
+ * - Menos de 2 partidos jugados → neutral
+ * - 4 o más puntos (2 victorias o victoria+empate) → arriba
+ * - Cualquier otro caso → abajo
  */
-export function mapFormaByRecentWins(victorias: number, partidosJugados: number): Forma {
-  if (!Number.isFinite(victorias) || partidosJugados <= 0) {
+export function mapFormaByLastTwo(
+  victorias: number,
+  empates: number,
+  partidosJugados: number,
+): Forma {
+  if (!Number.isFinite(victorias) || !Number.isFinite(empates) || partidosJugados < 2) {
     return 'neutral';
   }
-  if (victorias >= 2) {
-    return 'up';
-  }
-  if (victorias === 1) {
-    return 'neutral';
-  }
-  return 'down';
+  const points = victorias * 3 + empates;
+  return points >= 4 ? 'up' : 'down';
 }

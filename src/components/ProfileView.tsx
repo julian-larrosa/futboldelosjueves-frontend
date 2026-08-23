@@ -7,7 +7,7 @@ import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { EditProfileModal } from './EditProfileModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { getInitials, mapFormaByRecentWins } from '../utils/format';
+import { mapFormaByLastTwo, getInitials } from '../utils/format';
 import { buildYearlyAttributeRadars, toRadarPoints, toRatingEvolutionLinePoints } from '../utils/charts';
 
 interface ProfileViewProps {
@@ -29,14 +29,22 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
 
   const fetcher = React.useCallback(async () => {
     const params = year ? { year } : {};
-    const [player, players, stats, matches, history] = await Promise.all([
+    const [player, players, stats, matches, history, recentForm] = await Promise.all([
       playersApi.get(playerId),
       playersApi.list({ size: 100 }),
       statisticsApi.getPlayerStatistics(playerId, params),
       matchesApi.list({ size: 100 }),
       attributesApi.getPlayerAttributeHistory(playerId).catch(() => null),
+      statisticsApi.getRecentForm(playerId, { limit: 2 }).catch(() => null),
     ]);
-    return { player, players: players.content, stats, matches: matches.content, history };
+    return {
+      player,
+      players: players.content,
+      stats,
+      matches: matches.content,
+      history,
+      recentForm,
+    };
   }, [playerId, year]);
 
   const { data, loading, error, refetch } = useApi(fetcher);
@@ -75,7 +83,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const s = toPlayerStatistics(stats);
   const recent = s.rendimientoReciente;
 
-  const forma = mapFormaByRecentWins(recent.victorias, recent.partidosJugados);
+  const formaSource = data.recentForm ?? s.rendimientoReciente;
+  const forma = mapFormaByLastTwo(
+    formaSource.victorias,
+    formaSource.empates,
+    formaSource.partidosJugados,
+  );
   const formaIcon =
     forma === 'up' ? 'arrow_upward' : forma === 'down' ? 'arrow_downward' : 'horizontal_rule';
   const formaBadgeClass =
@@ -118,7 +131,10 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           {/* Form Trend Badge */}
-          <div className="absolute bottom-0 right-0 z-20 bg-white rounded-full p-1 shadow-md border border-[#EBE7DF]" title={`Últimos ${recent.partidosJugados} partidos: ${recent.victorias} ganados`}>
+          <div
+            className="absolute bottom-0 right-0 z-20 bg-white rounded-full p-1 shadow-md border border-[#EBE7DF]"
+            title={`Últimos ${formaSource.partidosJugados} partidos: ${formaSource.victorias}G · ${formaSource.empates}E`}
+          >
             <div className={`${formaBadgeClass} flex items-center justify-center rounded-full w-9 h-9`}>
               <span className="material-symbols-outlined font-bold text-[20px] fill">{formaIcon}</span>
             </div>
