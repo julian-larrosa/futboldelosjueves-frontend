@@ -11,6 +11,8 @@ import {
 import { useApi } from '../hooks/useApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { ConvocatoriaSection } from './ConvocatoriaSection';
+import { AttributeRatingsModal } from './AttributeRatingsModal';
+import { MatchAttendanceAdminCard } from './MatchAttendanceAdminCard';
 import { formatMatchDate, formatMatchTime, formatShortDate, getInitials } from '../utils/format';
 
 interface MatchDetailViewProps {
@@ -47,6 +49,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
 }) => {
   const [selectedTeamSide, setSelectedTeamSide] = useState<TeamSide>('EQUIPO_A');
   const [generatingTeams, setGeneratingTeams] = useState(false);
+  const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
 
   const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
   const matchQuery = useApi(matchFetcher);
@@ -112,6 +115,9 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   const scorers = matchStats.filter((p) => p.goles > 0);
   const hasScore = match.golesEquipoA !== null && match.golesEquipoB !== null;
   const isFinished = match.estado === 'FINALIZADO';
+  const playedPlayers = participations
+    .filter((p) => p.jugoEfectivamente)
+    .map((p) => ({ playerId: p.playerId, nombreCompleto: p.playerNombreCompleto }));
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 pb-16 pt-2">
@@ -371,16 +377,29 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
               <span>Calificaciones Oficiales</span>
             </h3>
 
-            {/* Calificar compañeros Button */}
-            {!isHincha && (
-              <button
-                onClick={onOpenRateModal}
-                className="bg-[#5A5A40] text-white px-5 py-2.5 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
-              >
-                <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
-                <span>Calificar compañeros</span>
-              </button>
-            )}
+            <div className="flex flex-wrap items-center gap-2">
+              {/* Cargar atributos (admin, partido finalizado) */}
+              {isAdmin && isFinished && (
+                <button
+                  onClick={() => setIsAttributesModalOpen(true)}
+                  className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] px-4 py-2 rounded-xl font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px] text-[#7B8B6F]">tune</span>
+                  <span>Cargar atributos</span>
+                </button>
+              )}
+
+              {/* Calificar compañeros Button */}
+              {!isHincha && (
+                <button
+                  onClick={onOpenRateModal}
+                  className="bg-[#5A5A40] text-white px-5 py-2.5 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center justify-center gap-2 shadow-xs active:scale-95"
+                >
+                  <span className="material-symbols-outlined text-[18px]">how_to_reg</span>
+                  <span>Calificar compañeros</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Ratings Table */}
@@ -435,10 +454,24 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
                   </tr>
                 )}
               </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+             </table>
+           </div>
+         </div>
+       </div>
+
+      {/* ASISTENCIA DE HINCHAS (admin, partido finalizado) */}
+      {isAdmin && isFinished && (
+        <MatchAttendanceAdminCard matchId={match.id} onRefresh={matchQuery.refetch} />
+      )}
+
+      {isAttributesModalOpen && (
+        <AttributeRatingsModal
+          isOpen={isAttributesModalOpen}
+          matchId={match.id}
+          players={playedPlayers}
+          onClose={() => setIsAttributesModalOpen(false)}
+        />
+      )}
     </div>
   );
 };
