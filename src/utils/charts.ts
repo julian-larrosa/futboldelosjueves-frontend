@@ -1,5 +1,6 @@
 import type { PlayerAttributes } from '../types';
-import type { MatchResponse, PlayerAttributeHistoryResponse, TopScorerResponse } from '../api';
+import type { AttributeType, MatchResponse, PlayerAttributeHistoryResponse, TopScorerResponse } from '../api';
+import { ATTRIBUTE_TYPES } from '../api';
 import type { RadarPoint } from '../components/charts/MonoRoundedRadarChart';
 import type { BarPoint } from '../components/charts/MonoRoundedBarChart';
 import type { LinePoint } from '../components/charts/MonoRoundedLineChart';
@@ -13,6 +14,14 @@ const ATTRIBUTE_RADAR: Array<{ key: keyof PlayerAttributes; subject: string }> =
   { key: 'fisico', subject: 'Físico' },
 ];
 
+const RADAR_SUBJECT_BY_TYPE: Record<AttributeType, string> = {
+  TECNICA: 'Técnica',
+  FISICO: 'Físico',
+  DEFINICION: 'Definición',
+  MENTALIDAD: 'Mentalidad',
+  PASE: 'Pase',
+};
+
 function roundToOneDecimal(value: number): number {
   return Math.round(value * 10) / 10;
 }
@@ -22,6 +31,56 @@ export function toRadarPoints(attributes: PlayerAttributes): RadarPoint[] {
     subject,
     metric: attributes[key],
   }));
+}
+
+export interface YearlyRadar {
+  year: number;
+  points: RadarPoint[];
+}
+
+/**
+ * Agrupa los ratings crudos del historial de atributos por año
+ * (uniendo matchId → fechaHora) y promedia cada atributo.
+ */
+export function buildYearlyAttributeRadars(
+  history: PlayerAttributeHistoryResponse | null,
+  matches: MatchResponse[],
+): YearlyRadar[] {
+  if (!history) return [];
+
+  const yearById = new Map<number, number>();
+  for (const match of matches) {
+    const date = new Date(match.fechaHora);
+    if (!Number.isNaN(date.getTime())) {
+      yearById.set(match.id, date.getFullYear());
+    }
+  }
+
+  const valuesByYear = new Map<number, Map<AttributeType, number[]>>();
+  for (const entry of history.history) {
+    const year = yearById.get(entry.matchId);
+    if (year === undefined) continue;
+    let byType = valuesByYear.get(year);
+    if (!byType) {
+      byType = new Map();
+      valuesByYear.set(year, byType);
+    }
+    const values = byType.get(entry.attributeType) ?? [];
+    values.push(entry.ratingValue);
+    byType.set(entry.attributeType, values);
+  }
+
+  return [...valuesByYear.entries()]
+    .map(([year, byType]) => ({
+      year,
+      points: ATTRIBUTE_TYPES.map((type) => {
+        const values = byType.get(type) ?? [];
+        const average =
+          values.length > 0 ? values.reduce((acc, v) => acc + v, 0) / values.length : 0;
+        return { subject: RADAR_SUBJECT_BY_TYPE[type], metric: roundToOneDecimal(average) };
+      }),
+    }))
+    .sort((a, b) => b.year - a.year);
 }
 
 export function toTopScorerBarPoints(scorers: TopScorerResponse[], limit = 8): BarPoint[] {

@@ -229,6 +229,33 @@ export interface HinchaResponse {
   email: string;
 }
 
+export interface AttendanceRegisterRequest {
+  hinchaIds: number[];
+}
+
+export interface MatchAttendanceResponse {
+  id: number;
+  matchId: number;
+  hinchaId: number;
+  hinchaNombre: string;
+  fechaHora: string;
+  estado: MatchStatus;
+}
+
+export interface AttendanceRankingResponse {
+  hinchaId: number;
+  nombre: string;
+  apellido: string;
+  totalPartidos: number;
+  asistenciasPorAnio: Array<{ anio: number; partidos: number }>;
+}
+
+export interface AttendanceStatisticsResponse {
+  totalHinchas: number;
+  totalAsistencias: number;
+  promedio: number;
+}
+
 export interface PlayerRequest {
   nombre: string;
   apellido: string;

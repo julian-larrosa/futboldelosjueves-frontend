@@ -14,6 +14,7 @@ interface NavigationProps {
   currentUser: Player | null;
   fallbackName: string;
   isAdmin: boolean;
+  unreadNotifications?: number;
   onLogout: () => void;
   onOpenNotifications: () => void;
   nextMatch?: NextMatchInfo | null;
@@ -25,6 +26,7 @@ export const Navigation: React.FC<NavigationProps> = ({
   currentUser,
   fallbackName,
   isAdmin,
+  unreadNotifications = 0,
   onLogout,
   onOpenNotifications,
   nextMatch,
@@ -119,7 +121,13 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <span className="material-symbols-outlined text-[20px]">notifications</span>
                 <span className="font-body text-sm font-medium">Notificaciones</span>
               </div>
-              <span className="w-2 h-2 rounded-full bg-[#D97B66]"></span>
+              {unreadNotifications > 0 ? (
+                <span className="min-w-5 h-5 px-1.5 rounded-full bg-[#D97B66] text-white font-mono text-[10px] font-bold flex items-center justify-center">
+                  {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                </span>
+              ) : (
+                <span className="w-2 h-2 rounded-full bg-[#EBE7DF]"></span>
+              )}
             </button>
           </nav>
         </div>
@@ -214,7 +222,11 @@ export const Navigation: React.FC<NavigationProps> = ({
           className="text-[#5A5A40] hover:text-[#7B8B6F] transition-colors relative p-1.5 rounded-full hover:bg-[#F1EFE7]"
         >
           <span className="material-symbols-outlined text-[22px]">notifications</span>
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-[#D97B66] rounded-full"></span>
+          {unreadNotifications > 0 && (
+            <span className="absolute top-0.5 right-0 min-w-4 h-4 px-1 bg-[#D97B66] text-white font-mono text-[9px] font-bold rounded-full flex items-center justify-center">
+              {unreadNotifications > 9 ? '9+' : unreadNotifications}
+            </span>
+          )}
         </button>
       </header>
 

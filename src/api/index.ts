@@ -9,6 +9,7 @@ export type { RequestOptions } from './client';
 
 export { authApi } from './authApi';
 export { hinchasApi } from './hinchasApi';
+export { attendanceApi } from './attendanceApi';
 export { playersApi } from './playersApi';
 export { matchesApi } from './matchesApi';
 export { participationsApi } from './participationsApi';

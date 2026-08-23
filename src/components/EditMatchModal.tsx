@@ -8,6 +8,8 @@ interface EditMatchModalProps {
   isOpen: boolean;
   onClose: () => void;
   matchId: number;
+  /** Se invoca tras cada acción exitosa para que la vista dueña refresque sus datos. */
+  onUpdated?: () => void;
 }
 
 const STATUS_LABEL: Record<MatchStatus, string> = {
@@ -27,7 +29,12 @@ function toDatetimeLocal(iso: string): string {
   )}:${pad(date.getMinutes())}`;
 }
 
-export const EditMatchModal: React.FC<EditMatchModalProps> = ({ isOpen, onClose, matchId }) => {
+export const EditMatchModal: React.FC<EditMatchModalProps> = ({
+  isOpen,
+  onClose,
+  matchId,
+  onUpdated,
+}) => {
   const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
   const matchQuery = useApi(matchFetcher);
 
@@ -108,6 +115,7 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({ isOpen, onClose,
     try {
       await action();
       matchQuery.refetch();
+      onUpdated?.();
       showMessage('success', successText);
     } catch (err) {
       showMessage('error', err instanceof Error ? err.message : 'Error en la operación.');
