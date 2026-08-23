@@ -39,3 +39,22 @@ export function getFirstNameInitials(name: string): string {
   const second = parts[1];
   return `${first.charAt(0)}.${second ? ` ${second}` : ''}`.trim();
 }
+
+export type Forma = 'up' | 'down' | 'neutral';
+
+/**
+ * Regla de estado de forma según victorias en los últimos 3 partidos:
+ * 2-3 victorias → arriba, 1 victoria → horizontal, 0 victorias → abajo.
+ */
+export function mapFormaByRecentWins(victorias: number, partidosJugados: number): Forma {
+  if (!Number.isFinite(victorias) || partidosJugados <= 0) {
+    return 'neutral';
+  }
+  if (victorias >= 2) {
+    return 'up';
+  }
+  if (victorias === 1) {
+    return 'neutral';
+  }
+  return 'down';
+}
