@@ -7,8 +7,8 @@ import { YearSelector } from './YearSelector';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { EditProfileModal } from './EditProfileModal';
 import { ChangePasswordModal } from './ChangePasswordModal';
-import { getInitials } from '../utils/format';
-import { toRadarPoints, toRatingEvolutionLinePoints } from '../utils/charts';
+import { getInitials, mapFormaByRecentWins } from '../utils/format';
+import { buildYearlyAttributeRadars, toRadarPoints, toRatingEvolutionLinePoints } from '../utils/charts';
 
 interface ProfileViewProps {
   playerId: number;
@@ -24,6 +24,7 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const [year, setYear] = useState<number | undefined>(undefined);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isChangePasswordModalOpen, setIsChangePasswordModalOpen] = useState(false);
+  const [radarView, setRadarView] = useState<'historico' | number>('historico');
   const isOwnProfile = playerId === currentPlayerId;
 
   const fetcher = React.useCallback(async () => {
@@ -48,6 +49,19 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
     [data, year],
   );
 
+  const yearlyRadars = useMemo(
+    () =>
+      data && data.history && data.matches
+        ? buildYearlyAttributeRadars(data.history, data.matches)
+        : [],
+    [data],
+  );
+
+  const selectedRadar = useMemo(() => {
+    if (radarView === 'historico') return null;
+    return yearlyRadars.find((r) => r.year === radarView) ?? null;
+  }, [radarView, yearlyRadars]);
+
   if (loading) {
     return <LoadingState label="Cargando perfil..." />;
   }
@@ -61,12 +75,15 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
   const s = toPlayerStatistics(stats);
   const recent = s.rendimientoReciente;
 
+  const forma = mapFormaByRecentWins(recent.victorias, recent.partidosJugados);
   const formaIcon =
-    recent.indiceForma === null || recent.indiceForma === 0
-      ? 'horizontal_rule'
-      : recent.indiceForma > 0
-      ? 'arrow_upward'
-      : 'arrow_downward';
+    forma === 'up' ? 'arrow_upward' : forma === 'down' ? 'arrow_downward' : 'horizontal_rule';
+  const formaBadgeClass =
+    forma === 'up'
+      ? 'bg-[#E2E8DC] text-[#48563F]'
+      : forma === 'down'
+        ? 'bg-[#FFEBE5] text-[#D97B66]'
+        : 'bg-[#F1EFE7] text-[#8D8D7E]';
 
   return (
     <div className="max-w-screen-md mx-auto space-y-8 pb-16 pt-2">
@@ -101,8 +118,8 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
           </div>
 
           {/* Form Trend Badge */}
-          <div className="absolute bottom-0 right-0 z-20 bg-white rounded-full p-1 shadow-md border border-[#EBE7DF]">
-            <div className="bg-[#E2E8DC] text-[#48563F] flex items-center justify-center rounded-full w-9 h-9">
+          <div className="absolute bottom-0 right-0 z-20 bg-white rounded-full p-1 shadow-md border border-[#EBE7DF]" title={`Últimos ${recent.partidosJugados} partidos: ${recent.victorias} ganados`}>
+            <div className={`${formaBadgeClass} flex items-center justify-center rounded-full w-9 h-9`}>
               <span className="material-symbols-outlined font-bold text-[20px] fill">{formaIcon}</span>
             </div>
           </div>
@@ -159,7 +176,50 @@ export const ProfileView: React.FC<ProfileViewProps> = ({
         </div>
 
         {hasOfficialAttributes(player) ? (
-          <MonoRoundedRadarChart data={toRadarPoints(ui.attributes)} height={220} />
+          <>
+            {/* Selector: Histórico / por año */}
+            <div className="flex flex-wrap items-center gap-2 mb-4">
+              <button
+                onClick={() => setRadarView('historico')}
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border ${
+                  radarView === 'historico'
+                    ? 'bg-[#5A5A40] text-white shadow-xs border-[#5A5A40]'
+                    : 'bg-white text-[#8D8D7E] hover:text-[#5A5A40] border-[#EBE7DF]'
+                }`}
+              >
+                Histórico
+              </button>
+              {yearlyRadars.map(({ year: radarYear }) => (
+                <button
+                  key={radarYear}
+                  onClick={() => setRadarView(radarYear)}
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all border ${
+                    radarView === radarYear
+                      ? 'bg-[#5A5A40] text-white shadow-xs border-[#5A5A40]'
+                      : 'bg-white text-[#8D8D7E] hover:text-[#5A5A40] border-[#EBE7DF]'
+                  }`}
+                >
+                  {radarYear}
+                </button>
+              ))}
+            </div>
+
+            {radarView === 'historico' || !selectedRadar ? (
+              <>
+                <MonoRoundedRadarChart data={toRadarPoints(ui.attributes)} height={220} />
+                <p className="text-center font-mono text-[10px] uppercase tracking-widest text-[#8D8D7E] mt-2">
+                  Promedio histórico
+                </p>
+              </>
+            ) : (
+              <>
+                <MonoRoundedRadarChart data={selectedRadar.points} height={220} />
+                <p className="text-center font-mono text-[10px] uppercase tracking-widest text-[#8D8D7E] mt-2">
+                  Promedio temporada {selectedRadar.year}
+                </p>
+              </>
+            )}
+          </>
         ) : (
           <EmptyState message="Sin valoraciones oficiales." />
         )}
