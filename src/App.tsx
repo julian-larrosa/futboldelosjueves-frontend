@@ -16,6 +16,8 @@ import { CreateMatchModal } from './components/CreateMatchModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { LoginScreen } from './components/LoginScreen';
 import { ForcedPasswordChangeScreen } from './components/ForcedPasswordChangeScreen';
+import { countUnread, getNotifications, markAllNotificationsRead, syncMatchNotifications } from './utils/notifications';
+import type { AppNotification } from './utils/notifications';
 
 const FINISHED_STATUS = 'FINALIZADO';
 const CANCELLED_STATUS = 'CANCELADO';
@@ -42,9 +44,13 @@ export default function App() {
   // Next match for sidebar
   const [nextMatch, setNextMatch] = useState<NextMatchInfo | null>(null);
 
+  // Notificaciones locales (nuevos partidos, etc.)
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => getNotifications());
+
   const fetchNextMatch = useCallback(async () => {
     try {
       const response = await matchesApi.list({ size: 100 });
+      setNotifications(syncMatchNotifications(response.content));
       const upcoming = response.content
         .filter((m) => m.estado !== FINISHED_STATUS && m.estado !== CANCELLED_STATUS)
         .sort((a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime());
@@ -119,6 +125,11 @@ export default function App() {
     logout();
   };
 
+  const handleOpenNotifications = () => {
+    setIsNotificationsModalOpen(true);
+    setNotifications(markAllNotificationsRead());
+  };
+
   const openRateModalForMatch = (matchId: string) => {
     setSelectedMatchId(Number(matchId));
     setIsRateModalOpen(true);
@@ -133,8 +144,9 @@ export default function App() {
         currentUser={currentUser}
         fallbackName={user?.username || user?.email || 'Hincha'}
         isAdmin={isAdmin}
+        unreadNotifications={countUnread(notifications)}
         onLogout={handleLogout}
-        onOpenNotifications={() => setIsNotificationsModalOpen(true)}
+        onOpenNotifications={handleOpenNotifications}
         nextMatch={nextMatch}
       />
 
@@ -239,6 +251,7 @@ export default function App() {
       <NotificationsModal
         isOpen={isNotificationsModalOpen}
         onClose={() => setIsNotificationsModalOpen(false)}
+        notifications={notifications}
       />
     </div>
   );
