@@ -15,6 +15,7 @@ import { ConvocatoriaSection } from './ConvocatoriaSection';
 import { AttributeRatingsModal } from './AttributeRatingsModal';
 import { MatchAttendanceAdminCard } from './MatchAttendanceAdminCard';
 import { TeamBuilder } from './TeamBuilder';
+import { EditMatchModal } from './EditMatchModal';
 import { formatMatchDate, formatMatchTime, formatShortDate, getInitials } from '../utils/format';
 
 interface MatchDetailViewProps {
@@ -23,7 +24,6 @@ interface MatchDetailViewProps {
   isHincha?: boolean;
   onSelectMatch: (matchId: string) => void;
   onSelectPlayer: (playerId: string) => void;
-  onOpenEditModal: () => void;
   onOpenRateModal: () => void;
 }
 
@@ -46,7 +46,6 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   isHincha = false,
   onSelectMatch,
   onSelectPlayer,
-  onOpenEditModal,
   onOpenRateModal,
 }) => {
   const [selectedTeamSide, setSelectedTeamSide] = useState<TeamSide>('EQUIPO_A');
@@ -54,6 +53,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   const [teamError, setTeamError] = useState<string | null>(null);
   const [isTeamBuilderOpen, setIsTeamBuilderOpen] = useState(false);
   const [isAttributesModalOpen, setIsAttributesModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
 
   const matchFetcher = React.useCallback(() => matchesApi.get(matchId), [matchId]);
   const matchQuery = useApi(matchFetcher);
@@ -188,7 +188,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
         {/* Action Button: Editar Resultado / Stats (solo admin) */}
         {isAdmin && (
           <button
-            onClick={onOpenEditModal}
+            onClick={() => setIsEditModalOpen(true)}
             className="bg-white hover:bg-[#F1EFE7] text-[#5A5A40] border border-[#EBE7DF] flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-all card-shadow active:scale-95"
           >
             <span className="material-symbols-outlined text-[18px] text-[#7B8B6F]">edit</span>
@@ -525,6 +525,19 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
           matchId={match.id}
           players={playedPlayers}
           onClose={() => setIsAttributesModalOpen(false)}
+        />
+      )}
+
+      {isEditModalOpen && (
+        <EditMatchModal
+          isOpen={isEditModalOpen}
+          matchId={match.id}
+          onClose={() => setIsEditModalOpen(false)}
+          onUpdated={() => {
+            matchQuery.refetch();
+            participationsQuery.refetch();
+            teamsQuery.refetch();
+          }}
         />
       )}
     </div>

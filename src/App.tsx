@@ -11,7 +11,6 @@ import { MatchesListView } from './components/MatchesListView';
 import { PlayersDirectoryView } from './components/PlayersDirectoryView';
 import { HinchasAdminView } from './components/HinchasAdminView';
 import { RateTeammatesModal } from './components/RateTeammatesModal';
-import { EditMatchModal } from './components/EditMatchModal';
 import { CreateMatchModal } from './components/CreateMatchModal';
 import { NotificationsModal } from './components/NotificationsModal';
 import { LoginScreen } from './components/LoginScreen';
@@ -37,7 +36,6 @@ export default function App() {
 
   // Modals state
   const [isRateModalOpen, setIsRateModalOpen] = useState(false);
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isCreateMatchModalOpen, setIsCreateMatchModalOpen] = useState(false);
   const [isNotificationsModalOpen, setIsNotificationsModalOpen] = useState(false);
 
@@ -197,7 +195,6 @@ export default function App() {
                   isHincha={isHincha}
                   onSelectMatch={handleSelectMatch}
                   onSelectPlayer={handleSelectPlayer}
-                  onOpenEditModal={() => setIsEditModalOpen(true)}
                   onOpenRateModal={() => setIsRateModalOpen(true)}
                 />
               </div>
@@ -229,14 +226,6 @@ export default function App() {
           onClose={() => setIsRateModalOpen(false)}
           matchId={selectedMatchId}
           currentPlayerId={currentUserId}
-        />
-      )}
-
-      {selectedMatchId !== null && (
-        <EditMatchModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          matchId={selectedMatchId}
         />
       )}
 
