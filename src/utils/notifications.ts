@@ -79,8 +79,21 @@ export function syncMatchNotifications(matches: MatchResponse[]): AppNotificatio
   // Siempre actualizar los vistos para no re-notificar
   writeJson(SEEN_MATCHES_KEY, [...currentIds]);
 
+  // Partidos finalizados o cancelados cuyas notificaciones deben eliminarse
+  const finishedOrCancelledIds = new Set(
+    matches
+      .filter((m) => m.estado === 'FINALIZADO' || m.estado === 'CANCELADO')
+      .map((m) => String(m.id)),
+  );
+
+  const existing = getNotifications().filter((n) => {
+    const matchId = n.id.replace('new-match-', '');
+    return !finishedOrCancelledIds.has(matchId);
+  });
+
   if (newUpcoming.length === 0) {
-    return getNotifications();
+    saveNotifications(existing);
+    return existing;
   }
 
   const created: AppNotification[] = newUpcoming.map((match) => ({
@@ -94,7 +107,7 @@ export function syncMatchNotifications(matches: MatchResponse[]): AppNotificatio
     read: false,
   }));
 
-  const updated = [...created, ...getNotifications()].slice(0, MAX_NOTIFICATIONS);
+  const updated = [...created, ...existing].slice(0, MAX_NOTIFICATIONS);
   saveNotifications(updated);
   return updated;
 }

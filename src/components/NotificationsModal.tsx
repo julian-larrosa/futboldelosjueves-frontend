@@ -19,8 +19,8 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-md rounded-[28px] p-6 card-shadow border border-[#EBE7DF] relative max-h-[85vh] flex flex-col">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs anim-fade-in">
+      <div className="bg-white w-full max-w-md rounded-[28px] p-6 card-shadow border border-[#EBE7DF] relative max-h-[85vh] flex flex-col anim-scale-in">
         <div className="flex items-center justify-between border-b border-[#EBE7DF] pb-4 mb-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-[#7B8B6F]">notifications</span>
@@ -83,7 +83,7 @@ export const NotificationsModal: React.FC<NotificationsModalProps> = ({
         <div className="mt-4 pt-4 border-t border-[#EBE7DF] flex justify-end">
           <button
             onClick={onClose}
-            className="w-full py-2.5 bg-[#F1EFE7] hover:bg-[#EBE7DF] text-[#5A5A40] font-mono text-xs font-bold rounded-xl transition-colors border border-[#EBE7DF]"
+            className="w-full py-2.5 bg-[#F1EFE7] hover:bg-[#EBE7DF] text-[#5A5A40] font-mono text-xs font-bold rounded-xl transition-all active:scale-[0.98] border border-[#EBE7DF]"
           >
             Entendido
           </button>

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   attendanceApi,
   matchesApi,
@@ -13,6 +13,7 @@ import { LoadingState, ErrorState, EmptyState } from './StateViews';
 import { getInitials, mapFormaByLastTwo } from '../utils/format';
 import type { Forma } from '../utils/format';
 import { toTopScorerBarPoints } from '../utils/charts';
+import { AnimatedNumber } from './motion/AnimatedNumber';
 
 interface RankingsViewProps {
   onSelectPlayer: (playerId: string) => void;
@@ -42,6 +43,19 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
   const [showFilterMenu, setShowFilterMenu] = useState(false);
   const [expandedView, setExpandedView] = useState(false);
   const [year, setYear] = useState<number | undefined>(undefined);
+  const filterRef = useRef<HTMLDivElement>(null);
+
+  // Cierra el dropdown de filtro al hacer click fuera
+  useEffect(() => {
+    if (!showFilterMenu) return;
+    const onClickOutside = (e: MouseEvent) => {
+      if (filterRef.current && !filterRef.current.contains(e.target as Node)) {
+        setShowFilterMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [showFilterMenu]);
 
   const fetcher = React.useCallback(async () => {
     const params = year ? { year } : {};
@@ -154,7 +168,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
   };
 
   if (loading) {
-    return <LoadingState label="Cargando estadísticas..." />;
+    return <LoadingState label="Cargando estadísticas..." variant="table" />;
   }
 
   if (error) {
@@ -334,6 +348,8 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
         </div>
       </nav>
 
+      {/* CONTENIDO ACTIVO CON ENTRADA ANIMADA */}
+      <div key={activeTab} className="anim-fade-in">
       {/* ASISTENCIAS TAB */}
       {activeTab === 'ASISTENCIAS' ? (
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 md:gap-8 items-start">
@@ -454,10 +470,10 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
                   )}
                 </div>
 
-                <div className="relative">
+                <div className="relative" ref={filterRef}>
                   <button
                     onClick={() => setShowFilterMenu(!showFilterMenu)}
-                    className="text-[#5A5A40] font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-80 transition-opacity bg-white px-3 py-1.5 rounded-xl border border-[#EBE7DF] shadow-xs"
+                    className="text-[#5A5A40] font-mono text-xs font-bold flex items-center gap-1.5 hover:opacity-80 transition-opacity bg-white px-3 py-1.5 rounded-xl border border-[#EBE7DF] shadow-xs active:scale-95"
                   >
                     <span>FILTRAR</span>
                     <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">filter_list</span>
@@ -465,7 +481,10 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
 
                   {/* Filter Dropdown */}
                   {showFilterMenu && (
-                    <div className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-[#EBE7DF] py-2 z-30">
+                    <div
+                      className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-xl border border-[#EBE7DF] py-2 z-30 anim-scale-in"
+                      style={{ transformOrigin: 'top right' }}
+                    >
                       <div className="px-3 py-1 text-[10px] font-mono text-[#8D8D7E] font-bold uppercase tracking-wider">
                         Posición
                       </div>
@@ -512,7 +531,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
                       ))}
                     </tr>
                   </thead>
-                  <tbody className="font-body text-[#4A4A3F]">
+                  <tbody className="font-body text-[#4A4A3F] stagger">
                     {displayList.length > 0 ? (
                       displayList.map((player, index) => {
                         const isCurrentUser = player.playerId === currentPlayerId;
@@ -580,7 +599,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
                 <div className="p-3 text-center border-t border-[#EBE7DF] bg-[#F1EFE7]/40">
                   <button
                     onClick={() => setExpandedView(!expandedView)}
-                    className="font-mono text-xs font-bold text-[#7B8B6F] hover:underline uppercase tracking-wider"
+                    className="font-mono text-xs font-bold text-[#7B8B6F] hover:underline uppercase tracking-wider transition-opacity active:opacity-60"
                   >
                     {expandedView ? 'MOSTRAR MENOS' : 'VER RANKING COMPLETO'}
                   </button>
@@ -615,36 +634,36 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
                 {year ? `Estadísticas de Temporada ${year}` : 'Estadísticas Históricas'}
               </h3>
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-colors">
-                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight">
-                    {totalPartidos}
+                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight tabular-nums">
+                    <AnimatedNumber value={totalPartidos} />
                   </span>
                   <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
                     Total Partidos
                   </span>
                 </div>
 
-                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-colors">
-                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#7B8B6F] mb-1 tracking-tight">
-                    {partidosFinalizados}
+                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#7B8B6F] mb-1 tracking-tight tabular-nums">
+                    <AnimatedNumber value={partidosFinalizados} />
                   </span>
                   <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
                     Finalizados
                   </span>
                 </div>
 
-                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-colors">
-                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight">
-                    {jugadoresActivos}
+                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight tabular-nums">
+                    <AnimatedNumber value={jugadoresActivos} />
                   </span>
                   <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
                     Jugadores Activos
                   </span>
                 </div>
 
-                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-colors">
-                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#D2B48C] mb-1 tracking-tight">
-                    {golesTemporada}
+                <div className="bg-white rounded-[24px] card-shadow p-4 md:p-5 flex flex-col items-center justify-center text-center border border-[#EBE7DF] hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+                  <span className="font-serif text-3xl md:text-4xl font-bold text-[#D2B48C] mb-1 tracking-tight tabular-nums">
+                    <AnimatedNumber value={golesTemporada} />
                   </span>
                   <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
                     Goles de Temporada
@@ -655,6 +674,7 @@ export const RankingsView: React.FC<RankingsViewProps> = ({ onSelectPlayer, curr
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 };

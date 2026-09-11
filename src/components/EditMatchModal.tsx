@@ -53,9 +53,23 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(
     null,
   );
+  const [savingGoals, setSavingGoals] = useState(false);
 
   const match = matchQuery.data;
   const participations = participationsQuery.data?.content ?? [];
+
+  const teamAParticipations = participations.filter((p) => p.teamSide === 'EQUIPO_A');
+  const teamBParticipations = participations.filter((p) => p.teamSide === 'EQUIPO_B');
+  const unassignedParticipations = participations.filter(
+    (p) => p.teamSide !== 'EQUIPO_A' && p.teamSide !== 'EQUIPO_B',
+  );
+
+  const targetGoalsA = match ? (match.estado === 'FINALIZADO' ? (match.golesEquipoA ?? 0) : scoreA) : 0;
+  const targetGoalsB = match ? (match.estado === 'FINALIZADO' ? (match.golesEquipoB ?? 0) : scoreB) : 0;
+
+  const sumA = teamAParticipations.reduce((acc, p) => acc + (goals[p.playerId] ?? 0), 0);
+  const sumB = teamBParticipations.reduce((acc, p) => acc + (goals[p.playerId] ?? 0), 0);
+  const hasInconsistency = sumA > targetGoalsA || sumB > targetGoalsB;
 
   useEffect(() => {
     if (match) {
@@ -142,20 +156,32 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
     );
   };
 
-  const handleSaveGoals = (playerId: number) => {
-    runAction(
-      () =>
-        participationsApi.updateStatistics(matchId, playerId, {
-          goles: goals[playerId] ?? 0,
+  const handleSaveBatchGoals = async () => {
+    if (hasInconsistency || participations.length === 0) return;
+    setSavingGoals(true);
+    setMessage(null);
+    try {
+      await participationsApi.updateStatisticsBatch(matchId, {
+        stats: participations.map((p) => ({
+          playerId: p.playerId,
+          goles: Math.max(0, goals[p.playerId] ?? 0),
           jugoEfectivamente: true,
-        }),
-      'Goles del jugador actualizados.',
-    );
+        })),
+      });
+      matchQuery.refetch();
+      participationsQuery.refetch();
+      onUpdated?.();
+      showMessage('success', 'Goles y estadísticas guardados correctamente.');
+    } catch (err) {
+      showMessage('error', err instanceof Error ? err.message : 'Error al guardar goles.');
+    } finally {
+      setSavingGoals(false);
+    }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF] relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs anim-fade-in">
+      <div className="bg-white w-full max-w-lg rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF] relative max-h-[90vh] overflow-y-auto anim-scale-in">
         <button
           onClick={onClose}
           className="absolute right-5 top-5 text-[#8D8D7E] hover:text-[#5A5A40] p-1.5 rounded-full hover:bg-[#F1EFE7] transition-colors"
@@ -341,39 +367,177 @@ export const EditMatchModal: React.FC<EditMatchModalProps> = ({
           {/* Goles por jugador */}
           {(match.estado === 'EN_CURSO' || match.estado === 'FINALIZADO') &&
             participations.length > 0 && (
-              <div className="space-y-3">
-                <label className="block font-mono text-xs font-bold text-[#5A5A40] uppercase">
-                  Goles por jugador
-                </label>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {participations.map((p) => (
-                    <div
-                      key={p.id}
-                      className="flex items-center justify-between gap-3 p-2.5 bg-[#F1EFE7] rounded-xl text-xs font-semibold text-[#4A4A3F] border border-[#EBE7DF]"
-                    >
-                      <span className="truncate">{p.playerNombreCompleto}</span>
-                      <div className="flex items-center gap-2 shrink-0">
-                        <input
-                          type="number"
-                          min="0"
-                          max="99"
-                          value={goals[p.playerId] ?? 0}
-                          onChange={(e) =>
-                            setGoals((prev) => ({ ...prev, [p.playerId]: Number(e.target.value) }))
-                          }
-                          className="w-16 bg-white text-xs font-bold text-center text-[#4A4A3F] p-2 rounded-lg border border-[#EBE7DF]"
-                        />
-                        <button
-                          onClick={() => handleSaveGoals(p.playerId)}
-                          disabled={busy}
-                          className="px-3 py-2 bg-[#5A5A40] text-white text-[10px] font-mono font-bold rounded-lg hover:opacity-90 disabled:opacity-50"
-                        >
-                          Guardar
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block font-mono text-xs font-bold text-[#5A5A40] uppercase">
+                    Goles por jugador
+                  </label>
+                  <span className="text-[11px] font-mono text-[#8D8D7E]">
+                    {participations.length} convocados
+                  </span>
                 </div>
+
+                {/* Subsección Equipo A */}
+                <div className="bg-[#F9F7F2]/60 rounded-2xl p-4 border border-[#EBE7DF] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#7B8B6F]"></span>
+                      <span className="font-serif text-sm font-bold text-[#5A5A40]">Equipo A</span>
+                    </div>
+                    <span
+                      className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors ${
+                        sumA > targetGoalsA
+                          ? 'bg-[#FFEBE5] text-[#9A4A4A] border-[#D97B66]/40'
+                          : 'bg-white text-[#5A5A40] border-[#EBE7DF]'
+                      }`}
+                    >
+                      Suma: {sumA} / Goles del equipo: {targetGoalsA}
+                    </span>
+                  </div>
+
+                  {teamAParticipations.length > 0 ? (
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {teamAParticipations.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl text-xs font-semibold text-[#4A4A3F] border border-[#EBE7DF]"
+                        >
+                          <span className="truncate">{p.playerNombreCompleto}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-mono text-[#8D8D7E]">Goles:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="99"
+                              value={goals[p.playerId] ?? 0}
+                              onChange={(e) =>
+                                setGoals((prev) => ({
+                                  ...prev,
+                                  [p.playerId]: Math.max(0, Number(e.target.value)),
+                                }))
+                              }
+                              className="w-16 bg-[#F1EFE7] text-xs font-bold text-center text-[#4A4A3F] p-1.5 rounded-lg border border-[#EBE7DF] focus:ring-1 focus:ring-[#7B8B6F]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-mono text-[#8D8D7E] text-center py-2">
+                      Sin jugadores asignados al Equipo A.
+                    </p>
+                  )}
+                </div>
+
+                {/* Subsección Equipo B */}
+                <div className="bg-[#F9F7F2]/60 rounded-2xl p-4 border border-[#EBE7DF] space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#5A5A40]"></span>
+                      <span className="font-serif text-sm font-bold text-[#5A5A40]">Equipo B</span>
+                    </div>
+                    <span
+                      className={`font-mono text-xs font-bold px-2.5 py-1 rounded-lg border transition-colors ${
+                        sumB > targetGoalsB
+                          ? 'bg-[#FFEBE5] text-[#9A4A4A] border-[#D97B66]/40'
+                          : 'bg-white text-[#5A5A40] border-[#EBE7DF]'
+                      }`}
+                    >
+                      Suma: {sumB} / Goles del equipo: {targetGoalsB}
+                    </span>
+                  </div>
+
+                  {teamBParticipations.length > 0 ? (
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {teamBParticipations.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl text-xs font-semibold text-[#4A4A3F] border border-[#EBE7DF]"
+                        >
+                          <span className="truncate">{p.playerNombreCompleto}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-mono text-[#8D8D7E]">Goles:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="99"
+                              value={goals[p.playerId] ?? 0}
+                              onChange={(e) =>
+                                setGoals((prev) => ({
+                                  ...prev,
+                                  [p.playerId]: Math.max(0, Number(e.target.value)),
+                                }))
+                              }
+                              className="w-16 bg-[#F1EFE7] text-xs font-bold text-center text-[#4A4A3F] p-1.5 rounded-lg border border-[#EBE7DF] focus:ring-1 focus:ring-[#7B8B6F]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs font-mono text-[#8D8D7E] text-center py-2">
+                      Sin jugadores asignados al Equipo B.
+                    </p>
+                  )}
+                </div>
+
+                {/* Jugadores sin equipo asignado si existieran */}
+                {unassignedParticipations.length > 0 && (
+                  <div className="bg-[#F9F7F2]/60 rounded-2xl p-4 border border-[#EBE7DF] space-y-3">
+                    <span className="font-serif text-sm font-bold text-[#5A5A40]">Sin equipo</span>
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {unassignedParticipations.map((p) => (
+                        <div
+                          key={p.id}
+                          className="flex items-center justify-between gap-3 p-2.5 bg-white rounded-xl text-xs font-semibold text-[#4A4A3F] border border-[#EBE7DF]"
+                        >
+                          <span className="truncate">{p.playerNombreCompleto}</span>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[11px] font-mono text-[#8D8D7E]">Goles:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              max="99"
+                              value={goals[p.playerId] ?? 0}
+                              onChange={(e) =>
+                                setGoals((prev) => ({
+                                  ...prev,
+                                  [p.playerId]: Math.max(0, Number(e.target.value)),
+                                }))
+                              }
+                              className="w-16 bg-[#F1EFE7] text-xs font-bold text-center text-[#4A4A3F] p-1.5 rounded-lg border border-[#EBE7DF] focus:ring-1 focus:ring-[#7B8B6F]"
+                            />
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Botón único Guardar goles */}
+                <button
+                  onClick={handleSaveBatchGoals}
+                  disabled={savingGoals || busy || hasInconsistency}
+                  className="w-full py-3 rounded-xl font-mono text-xs font-bold bg-[#5A5A40] text-white hover:opacity-90 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-xs"
+                >
+                  {savingGoals ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin"></span>
+                      <span>Guardando goles...</span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[16px]">sports_soccer</span>
+                      <span>Guardar goles</span>
+                    </>
+                  )}
+                </button>
+
+                {hasInconsistency && (
+                  <p className="text-[11px] font-mono text-[#9A4A4A] text-center">
+                    La suma de goles individuales excede los goles del equipo correspondiente.
+                  </p>
+                )}
               </div>
             )}
 

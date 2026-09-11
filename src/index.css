@@ -90,3 +90,114 @@
   box-shadow: 0 4px 14px rgba(90, 90, 64, 0.06);
   transform: translateY(-1px);
 }
+
+/* ============================================================
+   MOTION LAYER — animaciones de entrada, micro-interacciones
+   y soporte prefers-reduced-motion. No tocar el @theme verde.
+   ============================================================ */
+
+/* --- Keyframes --- */
+@keyframes fdlj-fade-up {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes fdlj-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fdlj-scale-in {
+  from { opacity: 0; transform: scale(0.96) translateY(4px); }
+  to   { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+@keyframes fdlj-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-6px); }
+  40%      { transform: translateX(6px); }
+  60%      { transform: translateX(-4px); }
+  80%      { transform: translateX(4px); }
+}
+
+@keyframes fdlj-shimmer {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+
+/* --- Entrance utility classes (plain CSS, not Tailwind) --- */
+.anim-fade-up {
+  animation: fdlj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-fade-in {
+  animation: fdlj-fade-in 0.4s ease both;
+}
+.anim-scale-in {
+  animation: fdlj-scale-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.anim-shake {
+  animation: fdlj-shake 0.4s ease;
+}
+
+/* Retraso escalonado para listas: usar como `.stagger > *` */
+.stagger > * {
+  opacity: 0;
+  animation: fdlj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0.03s; }
+.stagger > *:nth-child(2) { animation-delay: 0.08s; }
+.stagger > *:nth-child(3) { animation-delay: 0.13s; }
+.stagger > *:nth-child(4) { animation-delay: 0.18s; }
+.stagger > *:nth-child(5) { animation-delay: 0.23s; }
+.stagger > *:nth-child(6) { animation-delay: 0.28s; }
+.stagger > *:nth-child(7) { animation-delay: 0.33s; }
+.stagger > *:nth-child(8) { animation-delay: 0.38s; }
+.stagger > *:nth-child(9) { animation-delay: 0.43s; }
+.stagger > *:nth-child(10) { animation-delay: 0.48s; }
+.stagger > *:nth-child(n + 11) { animation-delay: 0.53s; }
+
+/* --- Skeleton shimmer --- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 12px;
+  background: #EBE7DF;
+}
+.skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.55),
+    transparent
+  );
+  animation: fdlj-shimmer 1.6s infinite;
+}
+
+/* --- Focus visible (accesible desde teclado) --- */
+:focus-visible {
+  outline: 2px solid #7B8B6F;
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* --- Respetar prefers-reduced-motion --- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .stagger > * {
+    opacity: 1;
+  }
+  .skeleton::after {
+    display: none;
+  }
+}

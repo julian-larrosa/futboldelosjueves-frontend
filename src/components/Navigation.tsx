@@ -94,7 +94,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                 <button
                   key={item.tab}
                   onClick={() => setActiveTab(item.tab)}
-                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-left transition-all ${
+                  className={`w-full flex items-center gap-3.5 px-4 py-3 rounded-2xl text-left transition-all active:scale-[0.97] ${
                     isActive
                       ? 'bg-[#5A5A40] text-white shadow-sm font-semibold'
                       : 'text-[#8D8D7E] hover:text-[#5A5A40] hover:bg-[#F9F7F2]'
@@ -115,7 +115,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             {/* Notifications Button on Desktop */}
             <button
               onClick={onOpenNotifications}
-              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left text-[#8D8D7E] hover:text-[#5A5A40] hover:bg-[#F9F7F2] transition-colors mt-2"
+              className="w-full flex items-center justify-between px-4 py-3 rounded-2xl text-left text-[#8D8D7E] hover:text-[#5A5A40] hover:bg-[#F9F7F2] transition-all active:scale-[0.97] mt-2"
             >
               <div className="flex items-center gap-3.5">
                 <span className="material-symbols-outlined text-[20px]">notifications</span>
@@ -136,8 +136,8 @@ export const Navigation: React.FC<NavigationProps> = ({
         <div className="space-y-3 pt-4">
           <div
             onClick={() => !isHincha && setActiveTab('profile')}
-            className={`bg-[#F1EFE7] rounded-[24px] p-4 flex items-center gap-3 border border-[#EBE7DF] transition-colors ${
-              isHincha ? 'cursor-default' : 'cursor-pointer hover:bg-[#EBE7DF]'
+            className={`bg-[#F1EFE7] rounded-[24px] p-4 flex items-center gap-3 border border-[#EBE7DF] transition-all ${
+              isHincha ? 'cursor-default' : 'cursor-pointer hover:bg-[#EBE7DF] active:scale-[0.98]'
             }`}
           >
             {renderAvatar('w-11 h-11')}
@@ -156,7 +156,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             </div>
           </div>
 
-          <div className="p-3.5 bg-[#F9F7F2] rounded-2xl border border-[#EBE7DF] text-xs">
+          <div className="p-3.5 bg-[#F9F7F2] rounded-2xl border border-[#EBE7DF] text-xs transition-all hover:-translate-y-0.5 hover:shadow-sm">
             <div className="flex items-center justify-between font-mono text-[#8D8D7E] text-[10px] uppercase font-bold tracking-wider mb-1">
               <span>PRÓXIMO ENCUENTRO</span>
             </div>
@@ -175,7 +175,7 @@ export const Navigation: React.FC<NavigationProps> = ({
 
           <button
             onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-mono font-bold text-[#8D8D7E] hover:text-[#C2623F] hover:bg-[#FFEBE5] border border-transparent hover:border-[#D97B66]/30 transition-all"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-mono font-bold text-[#8D8D7E] hover:text-[#C2623F] hover:bg-[#FFEBE5] border border-transparent hover:border-[#D97B66]/30 transition-all active:scale-[0.96]"
           >
             <span className="material-symbols-outlined text-[18px]">logout</span>
             <span>Cerrar sesión</span>
@@ -188,7 +188,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         {/* Leading Avatar */}
         <button
           onClick={() => !isHincha && setActiveTab('profile')}
-          className={`w-9 h-9 rounded-full bg-[#D2B48C] ${isHincha ? 'cursor-default' : ''}`}
+          className={`w-9 h-9 rounded-full bg-[#D2B48C] transition-transform active:scale-90 ${isHincha ? 'cursor-default' : ''}`}
           aria-label={displayName}
         >
           {renderAvatar('w-9 h-9')}
@@ -211,7 +211,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         <button
           onClick={onLogout}
           aria-label="Cerrar sesión"
-          className="text-[#5A5A40] hover:text-[#C2623F] transition-colors p-1.5 rounded-full hover:bg-[#FFEBE5]"
+          className="text-[#5A5A40] hover:text-[#C2623F] transition-all p-1.5 rounded-full hover:bg-[#FFEBE5] active:scale-90"
         >
           <span className="material-symbols-outlined text-[22px]">logout</span>
         </button>
@@ -219,7 +219,7 @@ export const Navigation: React.FC<NavigationProps> = ({
         {/* Trailing Icon Notifications */}
         <button
           onClick={onOpenNotifications}
-          className="text-[#5A5A40] hover:text-[#7B8B6F] transition-colors relative p-1.5 rounded-full hover:bg-[#F1EFE7]"
+          className="text-[#5A5A40] hover:text-[#7B8B6F] transition-all relative p-1.5 rounded-full hover:bg-[#F1EFE7] active:scale-90"
         >
           <span className="material-symbols-outlined text-[22px]">notifications</span>
           {unreadNotifications > 0 && (

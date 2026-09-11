@@ -18,6 +18,7 @@ export { ratingsApi } from './ratingsApi';
 export { attributesApi } from './attributesApi';
 export { teamsApi } from './teamsApi';
 export { statisticsApi } from './statisticsApi';
+export { matchCommentsApi } from './matchCommentsApi';
 
 export {
   DEFAULT_TEAM_A_NAME,

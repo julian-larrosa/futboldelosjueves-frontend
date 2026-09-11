@@ -282,6 +282,27 @@ export interface MatchStatisticsUpdateRequest {
   jugoEfectivamente: boolean;
 }
 
+export interface PlayerStatsUpdateRequest {
+  playerId: number;
+  goles: number;
+  jugoEfectivamente: boolean;
+}
+
+export interface MatchStatisticsBatchRequest {
+  stats: PlayerStatsUpdateRequest[];
+}
+
+export interface MatchCommentResponse {
+  id: number;
+  matchId: number;
+  authorId: number;
+  authorNombre: string;
+  authorRole: Role;
+  contenido: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface RatingRequest {
   calificadoId: number;
   puntaje: number;

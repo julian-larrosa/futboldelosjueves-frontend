@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { NavTab, Player } from '../types';
-import { MatchResponse, matchesApi, statisticsApi, toPlayerStatistics } from '../api';
+import { MatchResponse, matchesApi, matchCommentsApi, statisticsApi, toPlayerStatistics } from '../api';
 import { useApi } from '../hooks/useApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
-import { formatMatchDate, formatMatchTime, formatShortDate } from '../utils/format';
+import { AnimatedNumber } from './motion/AnimatedNumber';
+import { Reveal } from './motion/Reveal';
+import { formatMatchDate, formatMatchTime, formatShortDate, formatRelativeTime, getInitials } from '../utils/format';
 
 interface DashboardViewProps {
   currentUser: Player;
@@ -44,8 +46,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const matchesFetcher = React.useCallback(() => matchesApi.list({ size: 100 }), []);
   const matchesQuery = useApi(matchesFetcher);
 
+  const matches = matchesQuery.data?.content ?? [];
+  const finishedMatches = matches.filter((m) => m.estado === FINISHED_STATUS);
+  const latestFinished = finishedMatches[0];
+  const latestFinishedId = latestFinished?.id;
+
+  const commentsFetcher = React.useCallback(
+    () => (latestFinishedId ? matchCommentsApi.list(latestFinishedId) : Promise.resolve([])),
+    [latestFinishedId],
+  );
+  const commentsQuery = useApi(commentsFetcher);
+  const comments = commentsQuery.data ?? [];
+
   if (matchesQuery.loading || statsQuery.loading) {
-    return <LoadingState label="Cargando dashboard..." />;
+    return <LoadingState label="Cargando dashboard..." variant="cards" />;
   }
 
   if (matchesQuery.error || statsQuery.error) {
@@ -56,17 +70,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       />
     );
   }
-
-  const matches = matchesQuery.data?.content ?? [];
-  const finishedMatches = matches.filter((m) => m.estado === FINISHED_STATUS);
   const upcomingCandidates = matches.filter(isUpcomingMatch).sort(
     (a, b) => new Date(a.fechaHora).getTime() - new Date(b.fechaHora).getTime(),
   );
   const upcomingMatch = upcomingCandidates.find(
     (m) => new Date(m.fechaHora).getTime() >= now,
   ) ?? upcomingCandidates[0];
-
-  const latestFinished = finishedMatches[0];
 
   const targetTime = upcomingMatch ? new Date(upcomingMatch.fechaHora).getTime() : null;
   const diff = targetTime !== null ? Math.max(0, targetTime - now) : 0;
@@ -92,7 +101,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => setActiveTab('rankings')}
-              className="px-4 py-2 bg-white border border-[#EBE7DF] rounded-xl text-xs font-mono font-bold text-[#5A5A40] hover:bg-[#F1EFE7] transition-colors flex items-center gap-1.5 shadow-xs"
+              className="px-4 py-2 bg-white border border-[#EBE7DF] rounded-xl text-xs font-mono font-bold text-[#5A5A40] hover:bg-[#F1EFE7] transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
             >
               <span className="material-symbols-outlined text-[16px] text-[#7B8B6F]">leaderboard</span>
               Ver Posiciones
@@ -100,7 +109,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {latestFinished && (
               <button
                 onClick={() => onOpenRatingForMatch(String(latestFinished.id))}
-                className="px-4 py-2 bg-[#5A5A40] rounded-xl text-xs font-mono font-bold text-white hover:bg-[#484833] transition-colors flex items-center gap-1.5 shadow-xs"
+                className="px-4 py-2 bg-[#5A5A40] rounded-xl text-xs font-mono font-bold text-white hover:bg-[#484833] transition-all flex items-center gap-1.5 shadow-xs active:scale-95"
               >
                 <span className="material-symbols-outlined text-[16px]">how_to_reg</span>
                 Calificar último
@@ -111,6 +120,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Próximo Partido Bento Card */}
+      <Reveal delay={40}>
       <section>
         <div className="flex items-center gap-2 mb-3">
           <h2 className="font-serif text-lg md:text-xl font-bold text-[#5A5A40]">
@@ -174,7 +184,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </span>
               <button
                 onClick={() => onSelectMatch(String(upcomingMatch.id))}
-                className="w-full sm:w-auto bg-[#5A5A40] text-white px-6 py-2.5 rounded-2xl font-body font-semibold text-sm hover:bg-[#484833] transition-all shadow-xs flex items-center justify-center gap-2"
+                className="w-full sm:w-auto bg-[#5A5A40] text-white px-6 py-2.5 rounded-2xl font-body font-semibold text-sm hover:bg-[#484833] transition-all shadow-xs flex items-center justify-center gap-2 active:scale-[0.97]"
               >
                 <span>Ver detalle</span>
                 <span className="material-symbols-outlined text-[18px]">arrow_forward</span>
@@ -185,8 +195,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <EmptyState message="No hay partidos programados próximamente." />
         )}
       </section>
+      </Reveal>
 
       {/* Mi Resumen StatCards */}
+      <Reveal delay={120}>
       <section>
         <div className="flex items-center justify-between mb-3">
           <h2 className="font-serif text-lg md:text-xl font-bold text-[#5A5A40]">
@@ -194,7 +206,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </h2>
           <button
             onClick={() => setActiveTab('profile')}
-            className="text-xs font-mono font-bold text-[#7B8B6F] hover:underline uppercase tracking-wider"
+            className="text-xs font-mono font-bold text-[#7B8B6F] hover:underline uppercase tracking-wider transition-opacity active:opacity-60"
           >
             VER PERFIL COMPLETO
           </button>
@@ -202,9 +214,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4">
           {/* Card 1: Partidos */}
-          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-colors">
-            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight">
-              {stats?.matchesPlayed ?? 0}
+          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight tabular-nums">
+              <AnimatedNumber value={stats?.matchesPlayed ?? 0} />
             </span>
             <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
               Partidos
@@ -212,9 +224,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Card 2: Goles */}
-          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-colors">
-            <span className="font-serif text-3xl md:text-4xl font-bold text-[#7B8B6F] mb-1 tracking-tight">
-              {stats?.goles ?? 0}
+          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+            <span className="font-serif text-3xl md:text-4xl font-bold text-[#7B8B6F] mb-1 tracking-tight tabular-nums">
+              <AnimatedNumber value={stats?.goles ?? 0} />
             </span>
             <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
               Goles
@@ -222,9 +234,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Card 3: Victorias */}
-          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-colors">
-            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight">
-              {stats?.victorias ?? 0}
+          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight tabular-nums">
+              <AnimatedNumber value={stats?.victorias ?? 0} />
             </span>
             <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
               Victorias
@@ -232,9 +244,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
 
           {/* Card 4: Rating */}
-          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center border-b-4 border-b-[#D2B48C] hover:bg-[#F1EFE7] transition-colors">
-            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight">
-              {(stats?.rating ?? 0).toFixed(1)}
+          <div className="bg-white rounded-[24px] p-5 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center text-center border-b-4 border-b-[#D2B48C] hover:bg-[#F1EFE7] transition-all hover:-translate-y-0.5">
+            <span className="font-serif text-3xl md:text-4xl font-bold text-[#5A5A40] mb-1 tracking-tight tabular-nums">
+              <AnimatedNumber value={stats?.rating ?? 0} decimals={1} />
             </span>
             <span className="font-mono text-[10px] font-bold text-[#8D8D7E] uppercase tracking-widest">
               Rating
@@ -242,8 +254,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </section>
+      </Reveal>
 
       {/* Últimos Partidos */}
+      <Reveal delay={200}>
       <section>
         <div className="flex justify-between items-center mb-3">
           <h2 className="font-serif text-lg md:text-xl font-bold text-[#5A5A40]">
@@ -263,7 +277,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <div
                 key={match.id}
                 onClick={() => onSelectMatch(String(match.id))}
-                className="bg-white rounded-[24px] p-4 md:p-5 card-shadow card-hover flex flex-col md:flex-row items-center justify-between gap-4 border border-[#EBE7DF] cursor-pointer"
+                className="bg-white rounded-[24px] p-4 md:p-5 card-shadow card-hover flex flex-col md:flex-row items-center justify-between gap-4 border border-[#EBE7DF] cursor-pointer active:scale-[0.99]"
               >
                 {/* Team A */}
                 <div className="flex-1 flex justify-end items-center gap-3 w-full md:w-auto">
@@ -312,6 +326,83 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <EmptyState message="No hay partidos finalizados registrados." />
         )}
       </section>
+      </Reveal>
+
+      {/* Sección Poco serio */}
+      <Reveal delay={250}>
+      <section>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-[#7B8B6F] text-[22px]">forum</span>
+            <h2 className="font-serif text-lg md:text-xl font-bold text-[#5A5A40]">
+              Poco serio
+            </h2>
+          </div>
+          {latestFinished && (
+            <span className="font-mono text-[11px] font-semibold text-[#8D8D7E]">
+              Último partido ({formatShortDate(latestFinished.fechaHora)})
+            </span>
+          )}
+        </div>
+
+        <div className="bg-white rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF]">
+          {commentsQuery.loading ? (
+            <div className="py-8 flex items-center justify-center">
+              <LoadingState label="Cargando comentarios..." />
+            </div>
+          ) : comments.length > 0 ? (
+            <div className="space-y-3">
+              {comments.map((comment) => (
+                <div
+                  key={comment.id}
+                  className="p-4 rounded-2xl bg-[#F9F7F2]/60 border border-[#EBE7DF] flex flex-col sm:flex-row sm:items-start justify-between gap-3"
+                >
+                  <div className="flex items-start gap-3 min-w-0">
+                    <div className="w-9 h-9 rounded-full bg-[#EBE7DF] text-[#5A5A40] flex items-center justify-center font-mono text-xs font-bold shrink-0">
+                      {getInitials(comment.authorNombre)}
+                    </div>
+                    <div className="space-y-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-body text-sm font-bold text-[#4A4A3F]">
+                          {comment.authorNombre}
+                        </span>
+                        {comment.authorRole === 'ROLE_ADMIN' || comment.authorRole === 'ADMIN' ? (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#E2E8DC] text-[#48563F] border border-[#7B8B6F]/30">
+                            ADMIN
+                          </span>
+                        ) : (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-[#F1EFE7] text-[#8D8D7E]">
+                            JUGADOR
+                          </span>
+                        )}
+                      </div>
+                      <p className="font-body text-sm text-[#4A4A3F] whitespace-pre-wrap break-words">
+                        {comment.contenido}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="font-mono text-[11px] text-[#8D8D7E] shrink-0 self-end sm:self-start">
+                    {formatRelativeTime(comment.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 space-y-2">
+              <div className="w-12 h-12 rounded-full bg-[#F1EFE7] text-[#8D8D7E] flex items-center justify-center mx-auto">
+                <span className="material-symbols-outlined text-[24px]">chat_bubble_outline</span>
+              </div>
+              <p className="font-body text-sm font-semibold text-[#5A5A40]">
+                Nadie dijo nada... por ahora
+              </p>
+              <p className="font-body text-xs text-[#8D8D7E]">
+                Los comentarios y anécdotas del partido aparecerán acá.
+              </p>
+            </div>
+          )}
+        </div>
+      </section>
+      </Reveal>
     </div>
   );
 };

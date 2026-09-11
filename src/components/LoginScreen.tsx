@@ -36,6 +36,8 @@ export const LoginScreen: React.FC = () => {
   const [apellido, setApellido] = useState('');
   const [posicion, setPosicion] = useState<PlayerPosition>('DELANTERO');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [shakeNonce, setShakeNonce] = useState(0);
 
   const switchMode = (next: Mode) => {
     setMode(next);
@@ -81,6 +83,7 @@ export const LoginScreen: React.FC = () => {
 
     const validationError = validate();
     if (validationError) {
+      setShakeNonce((n) => n + 1);
       setError(validationError);
       return;
     }
@@ -113,6 +116,7 @@ export const LoginScreen: React.FC = () => {
         return;
       }
     } catch (err) {
+      setShakeNonce((n) => n + 1);
       if (err instanceof ApiError) {
         setError(err.message);
       } else {
@@ -149,7 +153,7 @@ export const LoginScreen: React.FC = () => {
     <div className="min-h-screen bg-[#F9F7F2] text-[#4A4A3F] font-body flex items-center justify-center p-4 antialiased selection:bg-[#7B8B6F] selection:text-white">
       <div className="w-full max-w-md">
         {/* Brand */}
-        <div className="flex flex-col items-center gap-2 mb-8">
+        <div className="flex flex-col items-center gap-2 mb-8 anim-fade-in">
           <div className="w-14 h-14 bg-[#7B8B6F] rounded-full flex items-center justify-center text-white shadow-md">
             <span className="material-symbols-outlined text-[28px]">sports_soccer</span>
           </div>
@@ -160,7 +164,12 @@ export const LoginScreen: React.FC = () => {
         </div>
 
         {/* Card */}
-        <div className="bg-white rounded-[28px] border border-[#EBE7DF] card-shadow overflow-hidden">
+        <div
+          key={shakeNonce}
+          className={`bg-white rounded-[28px] border border-[#EBE7DF] card-shadow overflow-hidden ${
+            error ? 'anim-shake' : 'anim-fade-up'
+          }`}
+        >
           {/* Mode Toggle (only for login / player register) */}
           {!modeTitle ? (
             <div className="flex bg-[#F1EFE7] p-1.5 gap-1 m-4 rounded-2xl border border-[#EBE7DF]">
@@ -261,17 +270,29 @@ export const LoginScreen: React.FC = () => {
               <label htmlFor="auth-password" className={labelClassName}>
                 {isForgot ? 'Nueva contraseña' : 'Contraseña'}
               </label>
-              <input
-                id="auth-password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder={isForgot || isAccountCreation ? 'Mínimo 8 caracteres' : '••••••••'}
-                required
-                minLength={isForgot || isAccountCreation ? 8 : undefined}
-                autoComplete={isForgot || isAccountCreation ? 'new-password' : 'current-password'}
-                className={inputClassName}
-              />
+              <div className="relative">
+                <input
+                  id="auth-password"
+                  type={showPassword ? 'text' : 'password'}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder={isForgot || isAccountCreation ? 'Mínimo 8 caracteres' : '••••••••'}
+                  required
+                  minLength={isForgot || isAccountCreation ? 8 : undefined}
+                  autoComplete={isForgot || isAccountCreation ? 'new-password' : 'current-password'}
+                  className={`${inputClassName} pr-11`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((v) => !v)}
+                  aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                  className="absolute inset-y-0 right-0 px-3 flex items-center text-[#8D8D7E] hover:text-[#5A5A40] transition-colors active:scale-90"
+                >
+                  <span className="material-symbols-outlined text-[20px]">
+                    {showPassword ? 'visibility_off' : 'visibility'}
+                  </span>
+                </button>
+              </div>
             </div>
 
             {isForgot && (
@@ -279,17 +300,29 @@ export const LoginScreen: React.FC = () => {
                 <label htmlFor="auth-confirm-password" className={labelClassName}>
                   Repetir nueva contraseña
                 </label>
-                <input
-                  id="auth-confirm-password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="••••••••"
-                  required
-                  minLength={8}
-                  autoComplete="new-password"
-                  className={inputClassName}
-                />
+                <div className="relative">
+                  <input
+                    id="auth-confirm-password"
+                    type={showPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
+                    required
+                    minLength={8}
+                    autoComplete="new-password"
+                    className={`${inputClassName} pr-11`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((v) => !v)}
+                    aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                    className="absolute inset-y-0 right-0 px-3 flex items-center text-[#8D8D7E] hover:text-[#5A5A40] transition-colors active:scale-90"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">
+                      {showPassword ? 'visibility_off' : 'visibility'}
+                    </span>
+                  </button>
+                </div>
               </div>
             )}
 

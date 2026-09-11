@@ -60,3 +60,19 @@ export function mapFormaByLastTwo(
   const points = victorias * 3 + empates;
   return points >= 4 ? 'up' : 'down';
 }
+
+export function formatRelativeTime(isoDate: string): string {
+  const date = new Date(isoDate);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffSec < 60) return 'hace un momento';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `hace ${diffMin} min`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `hace ${diffHours} ${diffHours === 1 ? 'hora' : 'horas'}`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays === 1) return 'ayer';
+  if (diffDays < 7) return `hace ${diffDays} días`;
+  return formatShortDate(isoDate);
+}
