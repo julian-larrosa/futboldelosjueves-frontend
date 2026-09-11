@@ -50,7 +50,7 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({
   const paginated = usePaginatedApi<MatchResponse>(fetcher, 10);
 
   if (paginated.loading) {
-    return <LoadingState label="Cargando partidos..." />;
+    return <LoadingState label="Cargando partidos..." variant="list" />;
   }
 
   if (paginated.error) {
@@ -78,7 +78,7 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({
           {isAdmin && onCreateMatch && (
             <button
               onClick={onCreateMatch}
-              className="bg-[#5A5A40] text-white px-4 py-2 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-xs active:scale-95"
+              className="bg-[#5A5A40] text-white px-4 py-2 rounded-xl font-mono text-xs font-bold hover:opacity-90 transition-all flex items-center gap-2 shadow-xs active:scale-95 active:bg-[#484833]"
             >
               <span className="material-symbols-outlined text-[16px]">add_circle</span>
               <span>Crear Partido</span>
@@ -91,7 +91,7 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({
               <button
                 key={tab}
                 onClick={() => setFilter(tab)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all ${
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-mono font-bold transition-all active:scale-90 ${
                   filter === tab
                     ? 'bg-[#5A5A40] text-white shadow-xs'
                     : 'text-[#8D8D7E] hover:text-[#5A5A40]'
@@ -106,12 +106,12 @@ export const MatchesListView: React.FC<MatchesListViewProps> = ({
 
       {/* Matches List */}
       {matches.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-4 stagger">
           {matches.map((match) => (
             <div
               key={match.id}
               onClick={() => onSelectMatch(String(match.id))}
-              className="bg-white rounded-[28px] p-5 md:p-6 card-shadow card-hover border border-[#EBE7DF] cursor-pointer transition-all space-y-4"
+              className="bg-white rounded-[28px] p-5 md:p-6 card-shadow card-hover border border-[#EBE7DF] cursor-pointer transition-all space-y-4 active:scale-[0.99]"
             >
               {/* Top metadata */}
               <div className="flex justify-between items-center text-xs font-mono border-b border-[#EBE7DF] pb-3">

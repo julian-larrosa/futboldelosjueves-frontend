@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   ResponsiveContainer,
   BarChart,
@@ -28,6 +28,7 @@ const BAR_COLORS = ['#5A5A40', '#7B8B6F', '#D2B48C'];
 
 export function MonoRoundedBarChart({ data, height = 220, onBarClick }: MonoRoundedBarChartProps) {
   const isMobile = useIsMobile();
+  const [hoverIndex, setHoverIndex] = useState<number | null>(null);
 
   const handleBarClick = (entry: unknown) => {
     if (!onBarClick) return;
@@ -40,7 +41,11 @@ export function MonoRoundedBarChart({ data, height = 220, onBarClick }: MonoRoun
   return (
     <div className="w-full">
       <ResponsiveContainer width="100%" height={height}>
-        <BarChart data={data} margin={{ top: 12, right: 12, left: -22, bottom: 0 }}>
+        <BarChart
+          data={data}
+          margin={{ top: 12, right: 12, left: -22, bottom: 0 }}
+          onMouseLeave={() => setHoverIndex(null)}
+        >
           <CartesianGrid
             strokeDasharray="2 2"
             vertical={false}
@@ -69,11 +74,14 @@ export function MonoRoundedBarChart({ data, height = 220, onBarClick }: MonoRoun
             animationDuration={isMobile ? 0 : 800}
             onClick={onBarClick ? handleBarClick : undefined}
             className={onBarClick ? 'cursor-pointer' : undefined}
+            onMouseMove={(_, index) => setHoverIndex(index)}
           >
             {data.map((entry, index) => (
               <Cell
                 key={`cell-${index}`}
                 fill={BAR_COLORS[index % BAR_COLORS.length]}
+                fillOpacity={hoverIndex !== null && hoverIndex !== index ? 0.3 : 1}
+                style={{ transition: 'fill-opacity 180ms ease' }}
               />
             ))}
           </Bar>

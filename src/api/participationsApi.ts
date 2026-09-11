@@ -1,5 +1,11 @@
 import { http } from './client';
-import type { MatchStatisticsUpdateRequest, PagedResponse, ParticipationRequest, ParticipationResponse } from './types';
+import type {
+  MatchStatisticsBatchRequest,
+  MatchStatisticsUpdateRequest,
+  PagedResponse,
+  ParticipationRequest,
+  ParticipationResponse,
+} from './types';
 
 export type ParticipationListParams = {
   page?: number;
@@ -25,4 +31,10 @@ export const participationsApi = {
     request: MatchStatisticsUpdateRequest,
   ): Promise<ParticipationResponse> =>
     http.put<ParticipationResponse>(`/api/matches/${matchId}/participations/${playerId}`, request),
+
+  updateStatisticsBatch: (
+    matchId: number,
+    request: MatchStatisticsBatchRequest,
+  ): Promise<ParticipationResponse[]> =>
+    http.put<ParticipationResponse[]>(`/api/matches/${matchId}/participations/stats`, request),
 };

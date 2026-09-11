@@ -11,6 +11,7 @@ import {
 } from '../api';
 import { useApi } from '../hooks/useApi';
 import { LoadingState, ErrorState, EmptyState } from './StateViews';
+import { Reveal } from './motion/Reveal';
 import { ConvocatoriaSection } from './ConvocatoriaSection';
 import { AttributeRatingsModal } from './AttributeRatingsModal';
 import { MatchAttendanceAdminCard } from './MatchAttendanceAdminCard';
@@ -96,7 +97,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
   const participationsQuery = useApi(participationsFetcher);
 
   if (matchQuery.loading) {
-    return <LoadingState label="Cargando partido..." />;
+    return <LoadingState label="Cargando partido..." variant="cards" />;
   }
 
   if (matchQuery.error || !matchQuery.data) {
@@ -198,6 +199,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
       </div>
 
       {/* MATCH SCOREBOARD CARD */}
+      <Reveal delay={80} className="card-hover rounded-[28px]">
       <div className="bg-white rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF] flex flex-col items-center justify-center relative overflow-hidden">
         <div className="flex items-center justify-between w-full max-w-2xl relative z-10">
           {/* Team A */}
@@ -247,6 +249,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
           </div>
         </div>
       </div>
+      </Reveal>
 
       {/* CONVOCATORIA SECTION */}
       {match.estado !== 'FINALIZADO' && match.estado !== 'CANCELADO' && (
@@ -259,6 +262,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
       )}
 
       {/* BENTO GRID LAYOUT */}
+      <Reveal delay={140}>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {/* GOLEADORES SECTION */}
         <div className="bg-white rounded-[28px] p-6 card-shadow border border-[#EBE7DF] md:col-span-1 flex flex-col">
@@ -513,6 +517,7 @@ export const MatchDetailView: React.FC<MatchDetailViewProps> = ({
            </div>
          </div>
        </div>
+      </Reveal>
 
       {/* ASISTENCIA DE HINCHAS (admin, partido finalizado) */}
       {isAdmin && isFinished && (

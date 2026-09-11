@@ -99,8 +99,8 @@ export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-in fade-in duration-200">
-      <div className="bg-white w-full max-w-lg rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF] relative max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs anim-fade-in">
+      <div className="bg-white w-full max-w-lg rounded-[28px] p-6 md:p-8 card-shadow border border-[#EBE7DF] relative max-h-[90vh] overflow-y-auto anim-scale-in">
         {/* Close Button */}
         <button
           onClick={onClose}
@@ -202,7 +202,7 @@ export const RateTeammatesModal: React.FC<RateTeammatesModalProps> = ({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="w-1/3 py-3 rounded-xl font-mono text-xs font-bold text-[#8D8D7E] hover:bg-[#F1EFE7] hover:text-[#5A5A40] transition-colors border border-[#EBE7DF]"
+                    className="w-1/3 py-3 rounded-xl font-mono text-xs font-bold text-[#8D8D7E] hover:bg-[#F1EFE7] hover:text-[#5A5A40] transition-all active:scale-[0.97] border border-[#EBE7DF]"
                   >
                     Cancelar
                   </button>
